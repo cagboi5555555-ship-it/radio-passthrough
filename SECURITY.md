@@ -32,4 +32,4 @@ Or build it yourself from this repository with `build.ps1`.
 
 ## Reporting a problem
 
-If you find a security issue, please don't open a public issue. Contact the maintainer privately through GitHub (the repository owner's profile), with steps to reproduce.
+If you find a security issue, please don't open a public issue. Report it privately on the repository's [Security tab → Report a vulnerability](https://github.com/cagboi5555555-ship-it/radio-passthrough/security/advisories/new), with steps to reproduce. Only the maintainer sees it.

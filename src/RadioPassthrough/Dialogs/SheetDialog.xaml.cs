@@ -6,7 +6,7 @@ namespace RadioPassthrough.Dialogs;
 // A small floating sheet: title, one paragraph, one or two buttons.
 public partial class SheetDialog : Window
 {
-    private SheetDialog(string title, string body, string primary, string? secondary)
+    private SheetDialog(string title, string body, string primary, string? secondary, bool destructive)
     {
         InitializeComponent();
         TitleText.Text = title;
@@ -14,11 +14,19 @@ public partial class SheetDialog : Window
         PrimaryButton.Content = primary;
         if (secondary is null) SecondaryButton.Visibility = Visibility.Collapsed;
         else SecondaryButton.Content = secondary;
+
+        // Enter never confirms something that stops the app or undoes setup; it picks the safe choice.
+        if (destructive && secondary is not null)
+        {
+            PrimaryButton.IsDefault = false;
+            SecondaryButton.IsDefault = true;
+            Loaded += (_, _) => SecondaryButton.Focus();
+        }
     }
 
-    public static bool Ask(Window? owner, string title, string body, string primary, string? secondary)
+    public static bool Ask(Window? owner, string title, string body, string primary, string? secondary, bool destructive = false)
     {
-        var dialog = new SheetDialog(title, body, primary, secondary);
+        var dialog = new SheetDialog(title, body, primary, secondary, destructive);
         if (owner is { IsVisible: true })
         {
             dialog.Owner = owner;
@@ -30,6 +38,9 @@ public partial class SheetDialog : Window
 
     public static void Tell(Window? owner, string title, string body, string button = "OK") =>
         Ask(owner, title, body, button, null);
+
+    public static bool Confirm(Window? owner, string title, string body, string action, string keep) =>
+        Ask(owner, title, body, action, keep, destructive: true);
 
     private void Primary_Click(object sender, RoutedEventArgs e) => DialogResult = true;
 

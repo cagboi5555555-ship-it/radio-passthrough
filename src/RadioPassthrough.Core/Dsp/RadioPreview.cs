@@ -31,7 +31,4 @@ public static class RadioPreview
         var decoded = OpusRoundTrip.Process(teamSpeakInput, settings.Codec, settings.Quality);
         return new AcreRadioEffect().ProcessAll(decoded, SignalQuality(settings.Signal));
     }
-
-    public static float[] AsTeamSpeakSends(ReadOnlySpan<float> teamSpeakInput, RadioPreviewSettings settings) =>
-        OpusRoundTrip.Process(teamSpeakInput, settings.Codec, settings.Quality);
 }

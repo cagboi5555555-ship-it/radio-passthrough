@@ -27,8 +27,6 @@ public sealed class DriftBuffer
         _target = targetSamples;
     }
 
-    public int TargetSamples => _target;
-
     public double Ratio { get; private set; } = 1.0;
 
     public int Underruns { get; private set; }
@@ -44,18 +42,6 @@ public sealed class DriftBuffer
         {
             foreach (float s in samples)
                 _ring[(_written++) & Mask] = s;
-
-            if (_written - _readIndex > Capacity - 8)
-                JumpToTarget();
-        }
-    }
-
-    public void WriteSilence(int count)
-    {
-        lock (_lock)
-        {
-            for (int i = 0; i < count; i++)
-                _ring[(_written++) & Mask] = 0f;
 
             if (_written - _readIndex > Capacity - 8)
                 JumpToTarget();

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace RadioPassthrough.Core.Game;
 
 public sealed record GameProcess(int Pid, string Name, bool Elevated);
@@ -7,7 +5,7 @@ public sealed record GameProcess(int Pid, string Name, bool Elevated);
 // Polls for Arma 3 and reports when it starts or exits.
 public sealed class ArmaWatcher : IDisposable
 {
-    private static readonly string[] ProcessNames = ["arma3_x64", "arma3"];
+    private static readonly string[] ExeNames = ["arma3_x64.exe", "arma3.exe"];
     private readonly Timer _timer;
     private GameProcess? _current;
 
@@ -25,23 +23,14 @@ public sealed class ArmaWatcher : IDisposable
         _timer.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
     }
 
+    // Only process names are listed here. The game itself is looked at once per launch (to see whether it
+    // runs as administrator), never on every poll.
     private void Poll()
     {
-        GameProcess? found = null;
-        foreach (string name in ProcessNames)
-        {
-            var processes = Process.GetProcessesByName(name);
-            foreach (var p in processes)
-            {
-                if (found is null)
-                    found = new GameProcess(p.Id, "Arma 3", ProcessInfo.IsElevated(p.Id));
-                p.Dispose();
-            }
-            if (found is not null) break;
-        }
-
+        int? pid = ProcessInfo.FindProcess(ExeNames);
         var previous = Current;
-        if (previous?.Pid == found?.Pid) return;
+        if (previous?.Pid == pid) return;
+        var found = pid is { } id ? new GameProcess(id, "Arma 3", ProcessInfo.IsElevated(id)) : null;
         Volatile.Write(ref _current, found);
         Changed?.Invoke(found);
     }

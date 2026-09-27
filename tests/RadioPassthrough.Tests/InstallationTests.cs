@@ -58,6 +58,20 @@ public sealed class InstallationTests : IDisposable
     }
 
     [Fact]
+    public void Update_keeps_start_with_windows_switched_off()
+    {
+        var install = Make();
+        Assert.True(install.StartWithWindowsAfterInstall); // first install: on
+
+        install.Install(FakeExe(), new Version(1, 0, 0), desktopShortcut: false, startWithWindows: true);
+        install.SetStartWithWindows(false);
+        Assert.False(install.StartWithWindowsAfterInstall);
+
+        install.Install(FakeExe(), new Version(1, 1, 0), desktopShortcut: false, install.StartWithWindowsAfterInstall);
+        Assert.False(install.StartsWithWindows);
+    }
+
+    [Fact]
     public void Remove_takes_away_every_trace_but_the_files()
     {
         var install = Make();

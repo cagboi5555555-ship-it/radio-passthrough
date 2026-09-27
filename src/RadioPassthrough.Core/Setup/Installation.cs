@@ -84,6 +84,9 @@ public sealed class Installation
         else key.DeleteValue(RunValueName, throwOnMissingValue: false);
     }
 
+    // Updates keep the earlier choice: autostart stays off if it was switched off. First installs start with Windows.
+    public bool StartWithWindowsAfterInstall => !IsInstalled || StartsWithWindows;
+
     public bool StartsWithWindows
     {
         get

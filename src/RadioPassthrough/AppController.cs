@@ -13,7 +13,11 @@ namespace RadioPassthrough;
 public sealed class AppController : IAsyncDisposable
 {
     private readonly Timer _saveTimer;
+    private readonly object _saveLock = new();
+    private int _saveFailures;
     private volatile bool _testMode;
+    private volatile bool _disposed;
+    private bool _started;
 
     public AppController()
     {
@@ -68,6 +72,7 @@ public sealed class AppController : IAsyncDisposable
             return;
         }
 
+        _started = true;
         Log.Info($"Starting {Core.AppInfo.Name} {Core.AppInfo.Version.ToString(3)} from {Environment.ProcessPath}");
         Engine.Mixer.Settings = Settings.ActiveMix;
         Engine.MicMode = Settings.MicChannels;
@@ -149,29 +154,49 @@ public sealed class AppController : IAsyncDisposable
 
     public void ApplyMix() => Engine.Mixer.Settings = Settings.ActiveMix;
 
-    public void ScheduleSave() => _saveTimer.Change(TimeSpan.FromMilliseconds(600), Timeout.InfiniteTimeSpan);
+    public void ScheduleSave() => ScheduleSave(TimeSpan.FromMilliseconds(600));
 
-    public void SaveNow()
+    private void ScheduleSave(TimeSpan delay)
     {
         try
         {
-            Store.Save(Settings);
+            _saveTimer.Change(delay, Timeout.InfiniteTimeSpan);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (ObjectDisposedException)
         {
-            Log.Warn($"Couldn't save settings: {e.Message}");
+            // Quitting; DisposeAsync saves one last time.
+        }
+    }
+
+    // Called from the UI, the save timer and background work, so saves are serialized. A failed save
+    // (file locked, or settings changing mid-write) is retried shortly instead of ever taking the app down.
+    public void SaveNow()
+    {
+        lock (_saveLock)
+        {
+            try
+            {
+                Store.Save(Settings);
+                _saveFailures = 0;
+            }
+            catch (Exception e)
+            {
+                if (_saveFailures++ == 0) Log.Warn($"Couldn't save settings: {e.Message}");
+                if (_saveFailures <= 3 && !_disposed) ScheduleSave(TimeSpan.FromSeconds(5));
+            }
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        _disposed = true;
         await _saveTimer.DisposeAsync();
         SaveNow();
         Keys.Dispose();
         DeviceGuard.Dispose();
         Arma.Dispose();
         await Engine.DisposeAsync();
-        Log.Info("Stopped.");
+        if (_started) Log.Info("Stopped.");
     }
 }

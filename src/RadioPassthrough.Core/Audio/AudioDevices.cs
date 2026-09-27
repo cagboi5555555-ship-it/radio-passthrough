@@ -27,12 +27,6 @@ public static class AudioDevices
 
     public static DeviceInfo? DefaultPlayback() => Default(DataFlow.Render, Role.Multimedia);
 
-    public static DeviceInfo? DefaultRecording() => Default(DataFlow.Capture, Role.Console);
-
-    public static DeviceInfo? DefaultCommunicationsPlayback() => Default(DataFlow.Render, Role.Communications);
-
-    public static DeviceInfo? DefaultCommunicationsRecording() => Default(DataFlow.Capture, Role.Communications);
-
     public static bool Exists(string id)
     {
         try

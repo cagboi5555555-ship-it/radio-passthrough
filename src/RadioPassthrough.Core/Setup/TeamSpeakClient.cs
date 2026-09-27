@@ -9,6 +9,7 @@ namespace RadioPassthrough.Core.Setup;
 public static class TeamSpeakClient
 {
     private static readonly string[] ProcessNames = ["ts3client_win64", "ts3client_win32"];
+    private static readonly string[] ExeNames = ["ts3client_win64.exe", "ts3client_win32.exe"];
 
     public static string AppDataConfig { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TS3Client");
@@ -67,33 +68,9 @@ public static class TeamSpeakClient
         return null;
     }
 
-    public static bool IsRunning()
-    {
-        foreach (string name in ProcessNames)
-        {
-            var processes = Process.GetProcessesByName(name);
-            foreach (var p in processes) p.Dispose();
-            if (processes.Length > 0) return true;
-        }
-        return false;
-    }
+    public static bool IsRunning() => ProcessId() is not null;
 
-    public static int? ProcessId()
-    {
-        foreach (string name in ProcessNames)
-        {
-            var processes = Process.GetProcessesByName(name);
-            try
-            {
-                if (processes.Length > 0) return processes[0].Id;
-            }
-            finally
-            {
-                foreach (var p in processes) p.Dispose();
-            }
-        }
-        return null;
-    }
+    public static int? ProcessId() => Game.ProcessInfo.FindProcess(ExeNames);
 
     // Asks TeamSpeak to close like clicking X would. Returns the executable to start it again, or null if
     // it wasn't running. Throws if it doesn't close in time (for example a dialog is open).
@@ -105,11 +82,16 @@ public static class TeamSpeakClient
         string? exe = null;
         try
         {
+            bool asked = false;
             foreach (var p in processes)
             {
-                try { exe ??= p.MainModule?.FileName; } catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException) { }
-                p.CloseMainWindow();
+                exe ??= Game.ProcessInfo.ImagePath(p.Id);
+                asked |= p.CloseMainWindow();
             }
+
+            // With its window hidden in the tray there's nothing to close; say so now rather than after the timeout.
+            if (!asked)
+                throw new InvalidOperationException("TeamSpeak is minimized to the tray, so it can't be closed for you. Quit it (right-click its tray icon → Quit) and try again.");
 
             var deadline = DateTime.UtcNow + timeout;
             while (DateTime.UtcNow < deadline)

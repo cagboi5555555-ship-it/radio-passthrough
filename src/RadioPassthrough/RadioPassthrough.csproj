@@ -11,7 +11,7 @@
     <RootNamespace>RadioPassthrough</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <Product>Radio Passthrough</Product>
     <Company>Radio Passthrough</Company>
     <Copyright>Radio Passthrough contributors. GPL-3.0.</Copyright>

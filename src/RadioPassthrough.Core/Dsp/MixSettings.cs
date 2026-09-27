@@ -24,6 +24,4 @@ public sealed record MixSettings
         DuckDb = 6f,
         LimiterEnabled = true,
     };
-
-    public bool IsPlainSum => GameDb == 0 && MicDb == 0 && !DuckEnabled && !LevelerEnabled && !LimiterEnabled;
 }

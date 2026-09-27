@@ -28,6 +28,37 @@ public class MixerTests
     }
 
     [Fact]
+    public void Recorded_take_replays_exactly_what_was_sent_live()
+    {
+        // The audio device asks for uneven chunks; the recording must keep them so a re-render with the
+        // live mix matches the live output sample for sample, even with every extra switched on.
+        var settings = new MixSettings { GameDb = -3, MicDb = 2, DuckEnabled = true, DuckDb = 9, LevelerEnabled = true, LimiterEnabled = true };
+        var live = new Mixer { Settings = settings };
+        var recorder = new TakeRecorder(TimeSpan.FromSeconds(2));
+        int[] sizes = [480, 480, 96, 480, 384, 441, 480, 17, 480];
+        var mic = Sine(96000, 250, 0.5f);
+        var game = Sine(96000, 1700, 0.9f, 5);
+        var sent = new List<float>();
+
+        int offset = 0;
+        for (int c = 0; offset < mic.Length; c++)
+        {
+            int n = Math.Min(sizes[c % sizes.Length], mic.Length - offset);
+            bool radio = c % 23 is >= 4 and < 15;
+            var output = new float[n];
+            live.Process(mic.AsSpan(offset, n), game.AsSpan(offset, n), radio, output);
+            recorder.Append(mic.AsSpan(offset, n), game.AsSpan(offset, n), radio);
+            sent.AddRange(output);
+            offset += n;
+        }
+
+        var replay = recorder.ToTake().Render(settings);
+        Assert.Equal(sent.Count, replay.Length);
+        for (int i = 0; i < replay.Length; i++)
+            Assert.Equal(sent[i], replay[i]);
+    }
+
+    [Fact]
     public void Game_is_silent_while_radio_key_is_up()
     {
         var take = MakeTake(new bool[20]);

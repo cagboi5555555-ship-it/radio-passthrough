@@ -211,7 +211,7 @@ public sealed class SetupViewModel : ObservableObject
                     await ChangeTeamSpeakAsync(apply: true);
                     break;
                 case CheckAction.RestoreTeamSpeak:
-                    if (SheetDialogAsk("Switch TeamSpeak back to your normal mic?",
+                    if (ConfirmDialog("Switch TeamSpeak back to your normal mic?",
                             "Radio passthrough stops working until you set it up again. TeamSpeak restarts for a moment if it's open.", "Switch back"))
                         await ChangeTeamSpeakAsync(apply: false);
                     break;
@@ -306,8 +306,8 @@ public sealed class SetupViewModel : ObservableObject
         }
     }
 
-    private static bool SheetDialogAsk(string title, string body, string primary) =>
-        Dialogs.SheetDialog.Ask(Application.Current.MainWindow, title, body, primary, "Cancel");
+    private static bool ConfirmDialog(string title, string body, string primary) =>
+        Dialogs.SheetDialog.Confirm(Application.Current.MainWindow, title, body, primary, "Cancel");
 
     private void Say(string text, CheckLevel level)
     {

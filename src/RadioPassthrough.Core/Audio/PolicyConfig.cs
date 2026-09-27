@@ -26,12 +26,6 @@ public static class PolicyConfig
         }
     }
 
-    public static void SetDefaultForAllRoles(string deviceId)
-    {
-        foreach (var role in Enum.GetValues<DeviceRole>())
-            SetDefault(deviceId, role);
-    }
-
     // Visible = false disables the endpoint (it disappears from device lists; "Show disabled devices"
     // in the Sound control panel brings it back).
     public static void SetVisibility(string deviceId, bool visible)

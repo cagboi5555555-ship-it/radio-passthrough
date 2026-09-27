@@ -272,12 +272,11 @@ public sealed class TestViewModel : ObservableObject
         {
             double sumSq = 0;
             long count = 0;
-            for (int b = 0; b < take.Gate.Length; b++)
+            foreach (var (offset, n, radio) in take.Chunks())
             {
-                if (!take.Gate[b]) continue;
-                int from = b * take.BlockSize, to = Math.Min(take.Length, from + take.BlockSize);
-                for (int i = from; i < to; i++) sumSq += take.Game[i] * take.Game[i];
-                count += to - from;
+                if (!radio) continue;
+                for (int i = offset; i < offset + n; i++) sumSq += take.Game[i] * take.Game[i];
+                count += n;
             }
             float gameDb = count == 0 ? Core.Dsp.Db.Floor : Core.Dsp.Db.FromGain((float)Math.Sqrt(sumSq / count));
             Checks.Add(gameDb > -60

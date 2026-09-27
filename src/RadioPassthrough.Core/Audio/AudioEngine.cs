@@ -75,8 +75,6 @@ public sealed class AudioEngine : IAsyncDisposable
 
     public bool RadioKeyHeld => _radioKey;
 
-    public bool Latched => _latch;
-
     public EngineStatus Status => Volatile.Read(ref _status);
 
     public event Action<EngineStatus>? StatusChanged;

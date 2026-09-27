@@ -27,8 +27,6 @@ public sealed class CaptureSource : IAsyncDisposable
 
     public string Name { get; }
 
-    public int Channels => _recorder.WaveFormat.Channels;
-
     // Raised when capture ends on its own (device unplugged, process gone, error).
     public event Action<Exception?>? Faulted;
 

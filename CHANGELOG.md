@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.2
+
+**Safer by default**
+- Pressing Enter on *Quit*, *Remove* or *Switch TeamSpeak back* now keeps things as they are; the risky choice needs a click.
+- Updating keeps your *Start with Windows* choice and your desktop shortcut.
+
+**Lighter on your PC and on anti-cheat**
+- Finding Arma and TeamSpeak now reads Windows' process list only. Arma itself is looked at once per launch instead of every 2 seconds.
+- The app never asks Windows for access to another program's memory; app names on the Test tab come from the exe file on disk.
+- Less background work and memory churn while the app sits in the tray.
+
+**Fixes**
+- Test tab recordings replay with exactly the timing they were sent with, so *Doc 1:1* vs *Custom* comparisons are sample-accurate.
+- A settings save that fails (for example, file locked by a backup tool) is retried instead of being able to stop the app.
+- If TeamSpeak is minimized to its tray icon, TeamSpeak setup tells you straight away to quit it, instead of waiting 15 seconds.
+- Security reports now go through GitHub's private *Report a vulnerability* form.
+
 ## 1.2.1
 
 - Releases are now built by GitHub from the public source, never on a personal PC, and each one comes with a signed build record you can check. See *Verifying a download* in `SECURITY.md`.

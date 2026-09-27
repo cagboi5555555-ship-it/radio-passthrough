@@ -214,7 +214,7 @@ public partial class App : Application
     public async void Quit(bool confirm)
     {
         if (_quitting) return;
-        if (confirm && !SheetDialog.Ask(_window, "Quit Radio Passthrough?",
+        if (confirm && !SheetDialog.Confirm(_window, "Quit Radio Passthrough?",
                 "TeamSpeak uses this app as your microphone, so nobody hears you until it runs again. It starts by itself the next time you sign in.",
                 "Quit", "Keep running"))
             return;
@@ -243,7 +243,7 @@ public partial class App : Application
 
     private async Task UninstallAsync(bool quiet)
     {
-        if (!quiet && !SheetDialog.Ask(null, "Remove Radio Passthrough?",
+        if (!quiet && !SheetDialog.Confirm(null, "Remove Radio Passthrough?",
                 "TeamSpeak goes back to your normal microphone and the app is removed from this PC. VB-CABLE stays installed.",
                 "Remove", "Keep"))
             return;
@@ -291,10 +291,13 @@ public partial class App : Application
         try
         {
             string source = Environment.ProcessPath ?? throw new InvalidOperationException("Can't tell where this file is.");
+            // An update keeps an existing desktop shortcut and the autostart choice.
+            bool desktop = desktopShortcut || installation.HasDesktopShortcut;
+            bool autostart = installation.StartWithWindowsAfterInstall;
             await Task.Run(() =>
             {
                 Instances.StopOthers(TimeSpan.FromSeconds(6));
-                installation.Install(source, AppInfo.Version, desktopShortcut, startWithWindows: true);
+                installation.Install(source, AppInfo.Version, desktop, autostart);
             });
             Process.Start(new ProcessStartInfo(installation.ExePath, "--tray --installed") { UseShellExecute = true, WorkingDirectory = installation.InstallDirectory })?.Dispose();
             return true;

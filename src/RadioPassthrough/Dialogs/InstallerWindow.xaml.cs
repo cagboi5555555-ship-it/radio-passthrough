@@ -31,6 +31,7 @@ public partial class InstallerWindow : Window
     {
         InstallButton.IsEnabled = CancelButton.IsEnabled = CloseButton.IsEnabled = false;
         bool desktop = DesktopShortcut.IsChecked == true;
+        bool autostart = _installation.StartWithWindowsAfterInstall;
         Say("Installing…", "Ink2");
         try
         {
@@ -38,7 +39,7 @@ public partial class InstallerWindow : Window
             await Task.Run(() =>
             {
                 Instances.StopOthers(TimeSpan.FromSeconds(6));
-                _installation.Install(source, AppInfo.Version, desktop, startWithWindows: true);
+                _installation.Install(source, AppInfo.Version, desktop, autostart);
             });
             Process.Start(new ProcessStartInfo(_installation.ExePath, "--installed") { UseShellExecute = true, WorkingDirectory = _installation.InstallDirectory })?.Dispose();
             Close();
