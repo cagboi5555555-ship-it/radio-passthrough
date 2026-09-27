@@ -19,6 +19,7 @@ namespace RadioPassthrough;
 //   (no args) / --tray       normal app (--tray starts hidden, used at Windows sign-in)
 //   run from outside the install folder → installer
 //   --installed              first start right after install/update
+//   --install [--desktop-shortcut]  install/update silently (scripted roll-out), then start in the tray
 //   --uninstall [--quiet]    remove (from Settings → Apps)
 //   --portable               run in place without installing
 //   --snapshot <dir>         render every screen to PNG off-screen (design review)
@@ -71,6 +72,12 @@ public partial class App : Application
         }
 
         var installation = new Installation();
+        if (args.Contains("--install"))
+        {
+            Shutdown(await InstallSilentlyAsync(installation, args.Contains("--desktop-shortcut")) ? 0 : 1);
+            return;
+        }
+
         if (!IsBuildOutput && !args.Contains("--portable") && !installation.IsThisCopy(Environment.ProcessPath))
         {
             new InstallerWindow(installation).ShowDialog();
@@ -259,6 +266,27 @@ public partial class App : Application
         string roaming = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RadioPassthrough");
         string local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioPassthrough");
         Installation.ScheduleRemoval(new Installation().InstallDirectory, roaming, local);
+    }
+
+    // For scripted roll-outs: install or update with no window, then start the installed copy in the tray.
+    private static async Task<bool> InstallSilentlyAsync(Installation installation, bool desktopShortcut)
+    {
+        try
+        {
+            string source = Environment.ProcessPath ?? throw new InvalidOperationException("Can't tell where this file is.");
+            await Task.Run(() =>
+            {
+                Instances.StopOthers(TimeSpan.FromSeconds(6));
+                installation.Install(source, AppInfo.Version, desktopShortcut, startWithWindows: true);
+            });
+            Process.Start(new ProcessStartInfo(installation.ExePath, "--tray --installed") { UseShellExecute = true, WorkingDirectory = installation.InstallDirectory })?.Dispose();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Log.Error("Silent install failed", e);
+            return false;
+        }
     }
 
     private async Task RunSnapshotAsync(string directory)

@@ -5,6 +5,7 @@
 **Install and share**
 - One file to share: running it outside the install folder opens an installer. No admin rights, Start menu entry, optional desktop shortcut, entry in Settings → Apps.
 - Running a newer file updates in place. The running copy is closed and the new one started.
+- `--install [--desktop-shortcut]` installs silently for scripted roll-outs. `--uninstall --quiet` removes silently.
 - Uninstall from Settings → Apps puts TeamSpeak back on your normal mic, removes the capture profile, and deletes the app, its settings and logs. VB-CABLE stays.
 
 **One-click setup**

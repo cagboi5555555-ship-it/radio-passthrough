@@ -74,6 +74,8 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1      # → dist\RadioPassth
 - `src/RadioPassthrough`: WPF app (Live / Test / Setup, tray, installer window).
 - `tests`: unit tests plus silent device tests (tones only ever go into VB-CABLE).
 - `RadioPassthrough.exe --snapshot <dir> [--theme light|dark]` renders every screen to PNG off-screen. `--portable` runs without installing.
+- Scripted roll-out: `RadioPassthrough-Setup-x.y.z.exe --install [--desktop-shortcut]` installs or updates silently and starts the app in the tray. Uninstall silently with `"%LOCALAPPDATA%\Programs\Radio Passthrough\RadioPassthrough.exe" --uninstall --quiet`.
+- `--selftest <file>` checks the parts that need real Windows (tray, SQLite, key polling, device guard, windows) without showing or changing anything. `build.ps1` runs it on the finished file.
 - Pushing a `v*` tag builds and publishes a GitHub release (`.github/workflows/build.yml`).
 
 GPL-3.0. See `LICENSE` and `THIRD-PARTY-NOTICES.md`.
