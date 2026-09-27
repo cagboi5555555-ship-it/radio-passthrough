@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- Releases are now built by GitHub from the public source, never on a personal PC, and each one comes with a signed build record you can check. See *Verifying a download* in `SECURITY.md`.
+- No changes to the app itself.
+
 ## 1.2.0
 
 **Offline by design**

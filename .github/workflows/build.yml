@@ -7,38 +7,89 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
 
-      # Device tests skip themselves on runners without VB-CABLE.
-      - name: Test
-        run: dotnet test --nologo
+      # Windows Server runners ship with the audio service stopped; the self-test lists audio devices.
+      - name: Start Windows Audio
+        shell: pwsh
+        run: |
+          Set-Service Audiosrv -StartupType Automatic -ErrorAction SilentlyContinue
+          Start-Service Audiosrv -ErrorAction SilentlyContinue
 
+      # Tests, publish, then the self-test on the finished exe. Device tests skip themselves without VB-CABLE.
       - name: Build release
         shell: pwsh
-        run: ./build.ps1 -SkipTests -SkipSelfTest
+        run: ./build.ps1
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: RadioPassthrough-Setup
-          path: dist/*
-
-      - name: Publish GitHub release
+      - name: Check the tag matches the app version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Skipped when the release was already published by hand from a self-tested local build.
+          TAG: ${{ github.ref_name }}
         run: |
-          gh release view "${{ github.ref_name }}" *> $null
-          if ($LASTEXITCODE -eq 0) { Write-Host "Release exists; leaving it as is."; exit 0 }
-          gh release create "${{ github.ref_name }}" (Get-ChildItem dist/*).FullName --title "Radio Passthrough ${{ github.ref_name }}" --notes "Download RadioPassthrough-Setup, run it, press Install. See CHANGELOG.md for what's new."
+          $exe = "dist/RadioPassthrough-Setup-$($env:TAG.TrimStart('v')).exe"
+          if (-not (Test-Path $exe)) { throw "Tag $env:TAG doesn't match <Version> in RadioPassthrough.csproj" }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: RadioPassthrough-Setup
+          path: dist/*
+          if-no-files-found: error
+
+  # Only for v* tags: GitHub signs a build record for the exe (proof it was built here, from this
+  # tag's source) and publishes the release. Nothing built on a personal PC is ever released.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write     # create the release
+      id-token: write     # sign the build record
+      attestations: write # store the build record
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: RadioPassthrough-Setup
+          path: dist
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.exe
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          exe="RadioPassthrough-Setup-$version.exe"
+          changes=$(awk -v h="## $version" '$0 == h { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md)
+          repo="https://github.com/$GITHUB_REPOSITORY"
+          cat > notes.md <<EOF
+          **Install:** download \`$exe\`, run it and click **Install** (no admin rights needed). If Windows shows *Windows protected your PC*, click **More info → Run anyway**; the file isn't code-signed yet. Then follow the Setup checklist: **Get VB-CABLE** (VB-Audio's official page), then **TeamSpeak → Set up**.
+
+          **Radio Passthrough never connects to the internet.** It has no networking code; a test and the release self-test enforce that.
+
+          **Built by GitHub from this source.** This file was built and self-tested by [this workflow run]($repo/actions/runs/$GITHUB_RUN_ID) from the \`$TAG\` tag, and GitHub signed a [build record]($repo/attestations) for it. [How to check your download]($repo/blob/main/SECURITY.md#verifying-a-download).
+
+          **What's new**
+          $changes
+          EOF
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Radio Passthrough $TAG" --notes-file notes.md

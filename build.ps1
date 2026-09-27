@@ -31,7 +31,7 @@ Set-Content -Path "$setup.sha256" -Value "$hash  $(Split-Path $setup -Leaf)" -En
 Copy-Item THIRD-PARTY-NOTICES.md dist -Force
 
 # Run the finished file itself: catches packaging problems that tests on the build output can't
-# (e.g. a native DLL missing from the single file). Needs a desktop session, so CI skips it.
+# (e.g. a native DLL missing from the single file). The GitHub build runs it too.
 if (-not $SkipSelfTest) {
     $result = Join-Path $env:TEMP "radiopassthrough-selftest.txt"
     $p = Start-Process (Resolve-Path $setup) -ArgumentList "--selftest `"$result`"" -PassThru -WindowStyle Hidden

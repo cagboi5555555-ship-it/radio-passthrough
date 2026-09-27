@@ -25,7 +25,7 @@ Arma 3's own sound ── radio key held ─┴─► mix ─► VB-CABLE ─►
 ## Install (about three minutes)
 
 1. Download **RadioPassthrough-Setup-x.y.z.exe** from the Releases page and run it.
-   - If Windows says *"Windows protected your PC"*, click **More info → Run anyway**. The file isn't code-signed yet; that's all the warning means. You can check the file against the SHA-256 published with each release.
+   - If Windows says *"Windows protected your PC"*, click **More info → Run anyway**. The file isn't code-signed yet; that's all the warning means. Every release is built by GitHub straight from this source, and you can [check your download](SECURITY.md#verifying-a-download).
 2. Click **Install**. No admin rights needed. Radio Passthrough opens on its checklist.
 3. Work down the checklist:
    - **VB-CABLE → Get VB-CABLE.** VB-Audio's official page opens. Download the *VB-CABLE Driver Pack*, unzip it, right-click `VBCABLE_Setup_x64.exe` → **Run as administrator** → **Install Driver**. The checklist turns green by itself. The app hides VB-CABLE's unused extra device and makes sure your own speakers and mic stay the Windows defaults.
@@ -60,7 +60,7 @@ Nothing on the Test tab changes your settings.
 | Setup says Arma runs as administrator | Click **Restart as admin**, or stop running Arma as admin. |
 | My speakers or mic switched to "CABLE" | The app switches them back by itself (Setup → *Keep my speakers and mic as the defaults*). |
 | Game too loud or quiet on the radio | Live → Mix → **Custom** → *Game level*. Test it on the Test tab. |
-| My antivirus complains | Unsigned new files sometimes get flagged. Check the SHA-256, or build it yourself from this source (below). |
+| My antivirus complains | Unsigned new files sometimes get flagged. [Check your download is the genuine build](SECURITY.md#verifying-a-download), or build it yourself from this source (below). |
 | Still stuck | Setup → **Copy diagnostics**, then paste it where you ask for help. Your Windows user name is removed from it. |
 
 ## Uninstall
@@ -98,6 +98,6 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1      # → dist\RadioPassth
 - `RadioPassthrough.exe --snapshot <dir> [--theme light|dark]` renders every screen to PNG off-screen. `--portable` runs without installing.
 - For admins: `RadioPassthrough-Setup-x.y.z.exe --install [--desktop-shortcut]` installs or updates without the installer window, then starts the app in the tray. `"%LOCALAPPDATA%\Programs\Radio Passthrough\RadioPassthrough.exe" --uninstall --quiet` removes it.
 - `--selftest <file>` checks the parts that need real Windows (tray, SQLite, key reading, device guard, windows, no network code loaded) without showing or changing anything. `build.ps1` runs it on the finished file.
-- Pushing a `v*` tag builds a GitHub release (`.github/workflows/build.yml`).
+- Releases come only from GitHub: pushing a `v*` tag runs the tests, builds, self-tests, signs a build record and publishes the release (`.github/workflows/build.yml`). The tag must match `<Version>` in `RadioPassthrough.csproj`, and the release notes come from `CHANGELOG.md`.
 
 GPL-3.0. See `LICENSE` and `THIRD-PARTY-NOTICES.md`. Security questions: see `SECURITY.md`.

@@ -10,11 +10,23 @@
 
 ## Verifying a download
 
-Each release lists the SHA-256 of `RadioPassthrough-Setup-x.y.z.exe`. In PowerShell:
+Since 1.2.1, every release is built by GitHub from the tagged source in this repository, never on anyone's PC. The build runs the tests and the self-test, then GitHub signs a **build record** (an [artifact attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds)) for the exe. It proves the file came from this repository's code and hasn't been changed since.
+
+**Quick check (no tools):**
+
+1. In PowerShell, get your file's fingerprint:
+   ```
+   Get-FileHash .\RadioPassthrough-Setup-x.y.z.exe -Algorithm SHA256
+   ```
+2. Open the repository's [build records](https://github.com/cagboi5555555-ship-it/radio-passthrough/attestations), open the one for your version, and compare the SHA-256 digest. It must match exactly.
+
+**Full check (GitHub CLI):**
 
 ```
-Get-FileHash .\RadioPassthrough-Setup-x.y.z.exe -Algorithm SHA256
+gh attestation verify .\RadioPassthrough-Setup-x.y.z.exe -R cagboi5555555-ship-it/radio-passthrough
 ```
+
+This checks the signature too, and shows the exact commit and workflow run that built the file.
 
 Or build it yourself from this repository with `build.ps1`.
 
