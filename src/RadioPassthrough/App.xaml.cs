@@ -1,91 +1,169 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
+using RadioPassthrough.Core;
+using RadioPassthrough.Core.Diagnostics;
+using RadioPassthrough.Core.Settings;
 using RadioPassthrough.Core.Setup;
+using RadioPassthrough.Dialogs;
 using RadioPassthrough.Theme;
 using RadioPassthrough.ViewModels;
 
 namespace RadioPassthrough;
 
+// Start-up modes:
+//   (no args) / --tray       normal app (--tray starts hidden, used at Windows sign-in)
+//   run from outside the install folder → installer
+//   --installed              first start right after install/update
+//   --uninstall [--quiet]    remove (from Settings → Apps)
+//   --portable               run in place without installing
+//   --snapshot <dir>         render every screen to PNG off-screen (design review)
+//   --selftest <file>        check the parts that need real Windows, without showing or changing anything
 public partial class App : Application
 {
-    private const string InstanceName = "RadioPassthrough.SingleInstance";
-    private const string ShowEventName = "RadioPassthrough.Show";
+    private const int MaxCrashRestarts = 3;
 
     private Mutex? _instance;
-    private EventWaitHandle? _showEvent;
     private AppController? _controller;
     private MainViewModel? _viewModel;
     private MainWindow? _window;
     private TrayIcon? _tray;
+    private MenuItem? _gameAudioItem;
     private bool _quitting;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        DispatcherUnhandledException += OnUnhandled;
-        string? snapshotDir = ArgValue(e.Args, "--snapshot");
-
-        if (snapshotDir is null)
+        DispatcherUnhandledException += OnDispatcherUnhandled;
+        AppDomain.CurrentDomain.UnhandledException += OnFatal;
+        TaskScheduler.UnobservedTaskException += (_, args) =>
         {
-            _instance = new Mutex(true, InstanceName, out bool first);
-            if (!first && e.Args.Contains("--restarted"))
-            {
-                try { first = _instance.WaitOne(TimeSpan.FromSeconds(8)); }
-                catch (AbandonedMutexException) { first = true; }
-            }
-            if (!first)
-            {
-                try { EventWaitHandle.OpenExisting(ShowEventName).Set(); } catch (WaitHandleCannotBeOpenedException) { }
-                _instance = null;
-                Shutdown();
-                return;
-            }
+            Log.Error("Background task failed", args.Exception);
+            args.SetObserved();
+        };
 
-            _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
-            new Thread(() =>
-            {
-                while (_showEvent.WaitOne())
-                    Dispatcher.BeginInvoke(ShowWindow);
-            }) { IsBackground = true, Name = "Show signal" }.Start();
+        string[] args = e.Args;
+        string? forcedTheme = ArgValue(args, "--theme");
+        ThemeManager.Initialize(forcedTheme is null ? null : forcedTheme == "dark");
+
+        if (ArgValue(args, "--snapshot") is { } snapshotDir)
+        {
+            await RunSnapshotAsync(snapshotDir);
+            return;
         }
 
-        string? forcedTheme = ArgValue(e.Args, "--theme");
-        ThemeManager.Initialize(forcedTheme is null ? null : forcedTheme == "dark");
+        if (ArgValue(args, "--selftest") is { } resultFile)
+        {
+            bool passed = await SelfTest.RunAsync(resultFile, BuildTrayMenu);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
+        if (args.Contains("--uninstall"))
+        {
+            await UninstallAsync(quiet: args.Contains("--quiet"));
+            Shutdown();
+            return;
+        }
+
+        var installation = new Installation();
+        if (!IsBuildOutput && !args.Contains("--portable") && !installation.IsThisCopy(Environment.ProcessPath))
+        {
+            new InstallerWindow(installation).ShowDialog();
+            Shutdown();
+            return;
+        }
+
+        await RunAppAsync(args);
+    }
+
+    private async Task RunAppAsync(string[] args)
+    {
+        _instance = new Mutex(true, Instances.MutexName, out bool first);
+        if (!first && (args.Contains("--restarted") || args.Contains("--installed")))
+        {
+            try { first = _instance.WaitOne(TimeSpan.FromSeconds(8)); }
+            catch (AbandonedMutexException) { first = true; }
+        }
+        if (!first)
+        {
+            Instances.SignalShow();
+            _instance = null;
+            Shutdown();
+            return;
+        }
+
+        ListenForSignal(Instances.ShowEventName, ShowWindow);
+        ListenForSignal(Instances.QuitEventName, () => Quit(confirm: false));
 
         _controller = new AppController();
         _viewModel = new MainViewModel(_controller);
         _window = new MainWindow(_viewModel);
-
-        if (snapshotDir is not null)
+        _tray = new TrayIcon(ShowWindow, BuildTrayMenu());
+        _viewModel.PropertyChanged += (_, p) =>
         {
-            await _controller.StartAsync();
-            _viewModel.Start();
-            await Snapshot.CaptureTabsAsync(_window, _viewModel, snapshotDir);
-            Quit();
-            return;
-        }
-
-        _tray = new TrayIcon(ShowWindow, Quit);
-        _controller.Engine.StatusChanged += s => Dispatcher.BeginInvoke(() => _tray?.SetStatus(s.CableFound ? "Running" : "VB-CABLE missing"));
+            if (p.PropertyName == nameof(MainViewModel.StatusText)) _tray?.SetTooltip($"Radio Passthrough · {_viewModel.StatusText}");
+        };
+        _controller.DeviceGuard.Restored += message => Dispatcher.BeginInvoke(() => _tray?.ShowMessage("Sound devices put back", message));
 
         await _controller.StartAsync();
         _viewModel.Start();
 
-        // Only the installed copy registers itself to start with Windows, never a build folder.
-        if (!_controller.Settings.FirstRunDone && !IsBuildOutput)
+        if (!_controller.Settings.FirstRunDone)
         {
             _controller.Settings.FirstRunDone = true;
-            if (_controller.Settings.StartWithWindows && Environment.ProcessPath is { } exe)
-                AutoStart.Set(true, exe);
             _controller.SaveNow();
             _viewModel.SelectedTab = 2;
+            ShowWindow();
+            return;
         }
 
-        if (!e.Args.Contains("--tray"))
-            ShowWindow();
+        if (!args.Contains("--tray")) ShowWindow();
+    }
+
+    private ContextMenu BuildTrayMenu()
+    {
+        var menu = new ContextMenu();
+        menu.SetResourceReference(FrameworkElement.StyleProperty, "TrayMenu");
+
+        MenuItem Item(string header, Action onClick)
+        {
+            var item = new MenuItem { Header = header };
+            item.SetResourceReference(FrameworkElement.StyleProperty, "TrayMenuItem");
+            item.Click += (_, _) => onClick();
+            return item;
+        }
+
+        Separator Line()
+        {
+            var s = new Separator();
+            s.SetResourceReference(FrameworkElement.StyleProperty, "TrayMenuSeparator");
+            return s;
+        }
+
+        _gameAudioItem = Item("Send game audio over radio", () => _viewModel?.Live.ToggleGameAudio());
+        menu.Opened += (_, _) => _gameAudioItem.IsChecked = _controller?.Settings.GameAudioEnabled == true;
+
+        menu.Items.Add(Item("Open Radio Passthrough", ShowWindow));
+        menu.Items.Add(Line());
+        menu.Items.Add(_gameAudioItem);
+        menu.Items.Add(Line());
+        menu.Items.Add(Item("Quit…", () => Quit(confirm: true)));
+        return menu;
+    }
+
+    private void ListenForSignal(string name, Action action)
+    {
+        var signal = new EventWaitHandle(false, EventResetMode.AutoReset, name);
+        new Thread(() =>
+        {
+            while (signal.WaitOne())
+                Dispatcher.BeginInvoke(action);
+        }) { IsBackground = true, Name = name }.Start();
     }
 
     private static bool IsBuildOutput =>
@@ -110,18 +188,23 @@ public partial class App : Application
         if (Current is not App app || Environment.ProcessPath is not { } exe) return;
         try
         {
-            Process.Start(new ProcessStartInfo(exe, "--restarted") { UseShellExecute = true, Verb = "runas" });
+            Process.Start(new ProcessStartInfo(exe, "--restarted") { UseShellExecute = true, Verb = "runas" })?.Dispose();
         }
         catch (Win32Exception)
         {
             return; // UAC prompt declined.
         }
-        app.Quit();
+        app.Quit(confirm: false);
     }
 
-    public async void Quit()
+    public async void Quit(bool confirm)
     {
         if (_quitting) return;
+        if (confirm && !SheetDialog.Ask(_window, "Quit Radio Passthrough?",
+                "TeamSpeak uses this app as your microphone, so nobody hears you until it runs again. It starts by itself the next time you sign in.",
+                "Quit", "Keep running"))
+            return;
+
         _quitting = true;
         _tray?.Dispose();
         if (_window is not null)
@@ -130,21 +213,96 @@ public partial class App : Application
             _window.Close();
         }
         if (_controller is not null) await _controller.DisposeAsync();
-        _instance?.ReleaseMutex();
+        try { _instance?.ReleaseMutex(); } catch (ApplicationException) { }
         Shutdown();
     }
 
-    private void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
+    private async Task UninstallAsync(bool quiet)
     {
+        if (!quiet && !SheetDialog.Ask(null, "Remove Radio Passthrough?",
+                "TeamSpeak goes back to your normal microphone and the app is removed from this PC. VB-CABLE stays installed.",
+                "Remove", "Keep"))
+            return;
+
+        string note = await Task.Run(async () =>
+        {
+            Instances.StopOthers(TimeSpan.FromSeconds(6));
+            var settings = new SettingsStore().Load();
+            string result = "";
+            try
+            {
+                var teamSpeak = new TeamSpeakSettings();
+                var state = teamSpeak.Read();
+                if (state.Installed && state.CaptureProfiles.Any(p => p.Name == TeamSpeakSettings.ProfileName))
+                {
+                    string? relaunch = null;
+                    if (TeamSpeakClient.IsRunning()) relaunch = await TeamSpeakClient.CloseAsync(TimeSpan.FromSeconds(15));
+                    teamSpeak.RemoveProfile(settings.PreviousTeamSpeakProfile);
+                    if (relaunch is not null) TeamSpeakClient.Start(relaunch);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error("Couldn't restore TeamSpeak during uninstall", e);
+                result = "TeamSpeak couldn't be switched back automatically. In TeamSpeak, open Options → Capture and pick your usual profile. ";
+            }
+
+            new Installation().RemoveIntegration();
+            return result;
+        });
+
+        if (!quiet)
+            SheetDialog.Tell(null, "Radio Passthrough is removed",
+                note + "VB-CABLE is still installed. If you don't need it anymore, remove it in Settings → Apps.");
+
+        // Files go last, once nothing is shown: the running exe is deleted a few seconds after we exit.
+        string roaming = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RadioPassthrough");
+        string local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioPassthrough");
+        Installation.ScheduleRemoval(new Installation().InstallDirectory, roaming, local);
+    }
+
+    private async Task RunSnapshotAsync(string directory)
+    {
+        _controller = new AppController();
+        _viewModel = new MainViewModel(_controller);
+        _window = new MainWindow(_viewModel);
+        await _controller.StartAsync(audio: false);
+        _viewModel.Start();
+        await Snapshot.CaptureAllAsync(_window, _viewModel, directory);
+        _quitting = true;
+        _window.AllowClose = true;
+        _window.Close();
+        await _controller.DisposeAsync();
+        Shutdown();
+    }
+
+    private void OnDispatcherUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        Log.Error("Unexpected error in the window", e.Exception);
+        e.Handled = true;
+    }
+
+    // Last resort: the process is going down. Log it and start a fresh copy in the tray so TeamSpeak
+    // doesn't lose your mic, unless it keeps crashing.
+    private void OnFatal(object sender, UnhandledExceptionEventArgs e)
+    {
+        Log.Error("Fatal error", e.ExceptionObject as Exception);
+        if (_controller is null || _quitting || Environment.ProcessPath is not { } exe) return;
         try
         {
-            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RadioPassthrough");
-            Directory.CreateDirectory(dir);
-            File.AppendAllText(Path.Combine(dir, "errors.log"), $"{DateTime.Now:u}  {e.Exception}\n\n");
+            string file = Path.Combine(Log.Directory, "crashes.txt");
+            var recent = File.Exists(file)
+                ? File.ReadAllLines(file).Select(l => DateTime.TryParse(l, out var t) ? t : DateTime.MinValue).Where(t => t > DateTime.Now.AddMinutes(-10)).ToList()
+                : [];
+            recent.Add(DateTime.Now);
+            File.WriteAllLines(file, recent.Select(t => t.ToString("O")));
+            if (recent.Count > MaxCrashRestarts) return;
+            try { _instance?.ReleaseMutex(); } catch (ApplicationException) { }
+            Process.Start(new ProcessStartInfo(exe, "--tray --restarted") { UseShellExecute = true })?.Dispose();
         }
-        catch (IOException)
+        catch (Exception)
         {
+            // Nothing more can be done from here.
         }
-        e.Handled = true;
     }
 }

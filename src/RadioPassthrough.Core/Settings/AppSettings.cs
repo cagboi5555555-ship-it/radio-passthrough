@@ -7,6 +7,14 @@ namespace RadioPassthrough.Core.Settings;
 
 public sealed class AppSettings
 {
+    public const int CurrentSchema = 2;
+
+    public int SchemaVersion { get; set; } = CurrentSchema;
+    public bool GameAudioEnabled { get; set; } = true;
+    public bool KeepRealDefaults { get; set; } = true;
+    public bool HideUnusedCableDevices { get; set; } = true;
+    public Dictionary<string, string> RememberedDefaults { get; set; } = new();
+    public DateTimeOffset? LastUpdateCheck { get; set; }
     public string? MicDeviceId { get; set; }
     public MicChannelMode MicChannels { get; set; } = MicChannelMode.Both;
     public MixPreset Preset { get; set; } = MixPreset.DocOneToOne;
@@ -38,16 +46,29 @@ public sealed class SettingsStore
 
     public string FilePath => Path.Combine(Directory, "settings.json");
 
+    // Settings from older versions load with defaults for anything new. A damaged file is kept aside as
+    // settings.json.bad and the app starts with defaults rather than refusing to run.
     public AppSettings Load()
     {
         try
         {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
+            if (!File.Exists(FilePath)) return new AppSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
+            settings.Bindings ??= PttBinding.AcreDefaults();
+            settings.RememberedDefaults ??= new();
+            settings.Custom ??= MixSettings.CustomDefault;
+            settings.Preview ??= new RadioPreviewSettings();
+            settings.SchemaVersion = AppSettings.CurrentSchema;
+            return settings;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or NotSupportedException)
         {
-            // A damaged file falls back to defaults rather than stopping the app.
+            Diagnostics.Log.Warn($"Settings file was damaged ({e.Message}); starting with defaults.");
+            try { File.Copy(FilePath, FilePath + ".bad", overwrite: true); } catch (IOException) { }
+        }
+        catch (IOException e)
+        {
+            Diagnostics.Log.Warn($"Couldn't read settings ({e.Message}); starting with defaults.");
         }
         return new AppSettings();
     }

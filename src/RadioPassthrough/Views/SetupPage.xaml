@@ -14,7 +14,31 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Checklist" Style="{StaticResource SectionHeader}" Margin="16,18,16,8" />
+        <StackPanel Margin="2,16,2,0">
+            <TextBlock Text="{Binding Headline}" Style="{StaticResource Title}" />
+            <TextBlock Margin="0,4,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
+                        <Setter Property="Text" Value="Each step below is one click. The app handles the rest." />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding AllReady}" Value="True">
+                                <Setter Property="Text" Value="Everything's in place. Join your server and talk on the radio." />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Update available -->
+        <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="16,12" Visibility="{Binding Update, Converter={StaticResource NotNull}}">
+            <Grid>
+                <TextBlock Text="{Binding UpdateText}" Style="{StaticResource RowLabel}" />
+                <Button Style="{StaticResource SmallPrimaryButton}" Content="Download" Command="{Binding OpenUpdateCommand}" HorizontalAlignment="Right" />
+            </Grid>
+        </Border>
+
+        <TextBlock Text="Checklist" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">
             <ItemsControl ItemsSource="{Binding Checks}">
                 <ItemsControl.ItemTemplate>
@@ -37,6 +61,8 @@
                                         Margin="12,0,0,0" VerticalAlignment="Center" Visibility="{Binding HasPrimaryAction, Converter={StaticResource Visible}}" />
                                 <Button Grid.Column="2" Style="{StaticResource SmallButton}" Content="{Binding ActionLabel}" Command="{Binding Action}"
                                         Margin="12,0,0,0" VerticalAlignment="Center" Visibility="{Binding HasSecondaryAction, Converter={StaticResource Visible}}" />
+                                <c:Spinner Grid.Column="2" Width="16" Height="16" Margin="12,0,6,0" VerticalAlignment="Center"
+                                           Visibility="{Binding Busy, Converter={StaticResource Visible}}" />
                             </Grid>
                         </StackPanel>
                         <DataTemplate.Triggers>
@@ -72,7 +98,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Device" Style="{StaticResource RowLabel}" />
                     <ComboBox Grid.Column="1" Style="{StaticResource PopupButton}" Margin="24,0,0,0"
-                              ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMic}">
+                              ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMic}" AutomationProperties.Name="Microphone">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
@@ -88,19 +114,42 @@
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="Both matches what TeamSpeak hears from this mic today. If your mic is plugged into one input and sounds quiet, pick that input." />
+                   Text="Both matches what TeamSpeak heard from this mic before. If your mic is plugged into one input and sounds quiet, pick that input." />
 
-        <TextBlock Text="App" Style="{StaticResource SectionHeader}" />
+        <TextBlock Text="Windows" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">
             <StackPanel>
                 <Grid Style="{StaticResource Row}">
+                    <TextBlock Text="Keep my speakers and mic as the defaults" Style="{StaticResource RowLabel}" Margin="0,0,56,0" />
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding KeepRealDefaults}" HorizontalAlignment="Right" AutomationProperties.Name="Keep my speakers and mic as the defaults" />
+                </Grid>
+                <Border Style="{StaticResource Divider}" />
+                <Grid Style="{StaticResource Row}">
                     <TextBlock Text="Start with Windows" Style="{StaticResource RowLabel}" />
-                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}" HorizontalAlignment="Right" />
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}" HorizontalAlignment="Right" AutomationProperties.Name="Start with Windows" />
                 </Grid>
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="TeamSpeak's mic is the cable on every server, so keep this on. Closing the window leaves the app running in the tray." />
+                   Text="If Windows ever makes the cable your default speakers or mic, the app puts yours back straight away. TeamSpeak's mic is the cable on every server, so keep Start with Windows on." />
+
+        <TextBlock Text="Help" Style="{StaticResource SectionHeader}" />
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <Grid Style="{StaticResource Row}">
+                    <TextBlock Text="Something not working?" Style="{StaticResource RowLabel}" />
+                    <Button Style="{StaticResource SmallButton}" Content="Copy diagnostics" Command="{Binding CopyDiagnosticsCommand}" HorizontalAlignment="Right" />
+                </Grid>
+                <Border Style="{StaticResource Divider}" />
+                <Grid Style="{StaticResource Row}">
+                    <TextBlock Text="Log files" Style="{StaticResource RowLabel}" />
+                    <Button Style="{StaticResource SmallButton}" Content="Open folder" Command="{Binding OpenLogsCommand}" HorizontalAlignment="Right" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
+                   Text="Diagnostics list your devices, settings and recent log lines. Paste them in Discord when you ask for help. Nothing is sent anywhere by itself." />
+
         <TextBlock Text="{Binding Version}" Style="{StaticResource Number}" Foreground="{DynamicResource Dim}" Margin="16,22,16,0" />
     </StackPanel>
 </UserControl>

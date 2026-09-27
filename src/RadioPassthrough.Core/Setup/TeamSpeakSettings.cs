@@ -1,5 +1,5 @@
-using System.Diagnostics;
-using Microsoft.Data.Sqlite;
+using RadioPassthrough.Core.Diagnostics;
+using RadioPassthrough.Core.Native;
 
 namespace RadioPassthrough.Core.Setup;
 
@@ -16,40 +16,39 @@ public sealed record TeamSpeakState
     public TeamSpeakProfile? ActiveCapture => CaptureProfiles.FirstOrDefault(p => p.Name == DefaultCaptureProfile);
 }
 
-// Reads and edits TeamSpeak 3's capture profiles in %APPDATA%\TS3Client\settings.db. Edits are only
-// made while TeamSpeak is closed (it rewrites the file on exit) and always after a backup.
+// Reads and edits TeamSpeak 3's capture profiles in settings.db. Edits are only made while TeamSpeak
+// is closed (it rewrites the file on exit) and always after a backup.
 public sealed class TeamSpeakSettings
 {
     public const string ProfileName = "Radio Passthrough";
+    private const int BackupsKept = 5;
+    private const string BackupPrefix = "settings.db.radiopassthrough-";
+
+    private readonly Func<bool> _isRunning;
+    private readonly string? _fixedDirectory;
 
     public TeamSpeakSettings(string? configDirectory = null, Func<bool>? isRunning = null)
     {
-        ConfigDirectory = configDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TS3Client");
-        _isRunning = isRunning ?? IsTeamSpeakRunning;
+        _fixedDirectory = configDirectory;
+        _isRunning = isRunning ?? TeamSpeakClient.IsRunning;
     }
 
-    private readonly Func<bool> _isRunning;
-
-    public string ConfigDirectory { get; }
+    // Looked up each time: TeamSpeak may be installed or moved while the app runs.
+    public string ConfigDirectory => _fixedDirectory ?? TeamSpeakClient.ConfigDirectory();
 
     public string DatabasePath => Path.Combine(ConfigDirectory, "settings.db");
 
-    public static bool IsTeamSpeakRunning()
-    {
-        foreach (string name in new[] { "ts3client_win64", "ts3client_win32" })
-        {
-            var processes = Process.GetProcessesByName(name);
-            foreach (var p in processes) p.Dispose();
-            if (processes.Length > 0) return true;
-        }
-        return false;
-    }
+    public string? LastBackupPath { get; private set; }
+
+    public bool IsRunning => _isRunning();
 
     public TeamSpeakState Read()
     {
-        bool plugin = File.Exists(Path.Combine(ConfigDirectory, "plugins", "acre2_win64.dll"))
-                      || File.Exists(Path.Combine(ConfigDirectory, "plugins", "acre2_win32.dll"));
-        if (!File.Exists(DatabasePath))
+        string dir = ConfigDirectory;
+        string db = Path.Combine(dir, "settings.db");
+        bool plugin = File.Exists(Path.Combine(dir, "plugins", "acre2_win64.dll"))
+                      || File.Exists(Path.Combine(dir, "plugins", "acre2_win32.dll"));
+        if (!File.Exists(db))
             return new TeamSpeakState { Installed = false, Running = _isRunning(), AcrePluginInstalled = plugin };
 
         // Read a private copy so TeamSpeak's own locks and journal are never touched.
@@ -58,11 +57,13 @@ public sealed class TeamSpeakSettings
         try
         {
             string copy = Path.Combine(temp, "settings.db");
-            CopyShared(DatabasePath, copy);
-            if (File.Exists(DatabasePath + "-journal")) CopyShared(DatabasePath + "-journal", copy + "-journal");
+            CopyShared(db, copy);
+            if (File.Exists(db + "-journal")) CopyShared(db + "-journal", copy + "-journal");
 
-            using var connection = Open(copy, SqliteOpenMode.ReadWrite);
-            var values = ReadProfiles(connection);
+            Dictionary<string, string?> values;
+            using (var connection = SqliteDatabase.Open(copy))
+                values = ReadProfiles(connection);
+
             var profiles = values.Keys
                 .Where(k => k.StartsWith("Capture/", StringComparison.Ordinal) && !k.EndsWith("/PreProcessing", StringComparison.Ordinal))
                 .Select(k => k["Capture/".Length..])
@@ -81,53 +82,65 @@ public sealed class TeamSpeakSettings
         }
         finally
         {
-            SqliteConnection.ClearAllPools();
-            try { Directory.Delete(temp, recursive: true); } catch { /* temp cleanup is best effort */ }
+            try { Directory.Delete(temp, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 
-    // Adds (or refreshes) the Radio Passthrough capture profile using the cable as its device and a
-    // verbatim copy of the current profile's processing, then makes it the default for all servers.
-    // Returns the name of the profile that was the default before, for restoring later.
+    // Adds (or refreshes) the Radio Passthrough capture profile with the cable as its device and a verbatim
+    // copy of the current profile's processing, then makes it the default for all servers. Returns the
+    // profile that was the default before, for restoring later.
     public string Apply(string cableDeviceId, string cableDeviceName)
     {
         EnsureClosed();
         Backup();
 
-        using var connection = Open(DatabasePath, SqliteOpenMode.ReadWrite);
-        using var tx = connection.BeginTransaction();
-        var values = ReadProfiles(connection, tx);
+        string previous = "Default";
+        using var connection = SqliteDatabase.Open(DatabasePath);
+        connection.InTransaction(() =>
+        {
+            var values = ReadProfiles(connection);
+            string current = values.GetValueOrDefault("DefaultCaptureProfile") ?? "Default";
+            previous = current == ProfileName ? "Default" : current;
+            string source = values.ContainsKey($"Capture/{previous}") ? previous : "Default";
 
-        string previous = values.GetValueOrDefault("DefaultCaptureProfile") ?? "Default";
-        string source = previous == ProfileName || !values.ContainsKey($"Capture/{previous}") ? "Default" : previous;
+            string mode = "";
+            if (values.GetValueOrDefault($"Capture/{source}") is { } sourceProfile)
+                mode = ParseLines(sourceProfile).GetValueOrDefault("Mode") ?? "";
+            string preprocessing = values.GetValueOrDefault($"Capture/{source}/PreProcessing") ?? DefaultPreProcessing;
 
-        string mode = "";
-        if (values.GetValueOrDefault($"Capture/{source}") is { } sourceProfile)
-            mode = ParseLines(sourceProfile).GetValueOrDefault("Mode") ?? "";
-        string preprocessing = values.GetValueOrDefault($"Capture/{source}/PreProcessing") ?? DefaultPreProcessing;
-
-        Upsert(connection, tx, $"Capture/{ProfileName}", $"DeviceDisplayName={cableDeviceName}\nDevice={cableDeviceId}\nMode={mode}");
-        Upsert(connection, tx, $"Capture/{ProfileName}/PreProcessing", preprocessing);
-        Upsert(connection, tx, "DefaultCaptureProfile", ProfileName);
-        tx.Commit();
-        SqliteConnection.ClearPool(connection);
-        return previous == ProfileName ? "Default" : previous;
+            Upsert(connection, $"Capture/{ProfileName}", $"DeviceDisplayName={cableDeviceName}\nDevice={cableDeviceId}\nMode={mode}");
+            Upsert(connection, $"Capture/{ProfileName}/PreProcessing", preprocessing);
+            Upsert(connection, "DefaultCaptureProfile", ProfileName);
+        });
+        Log.Info($"TeamSpeak capture profile set to \"{ProfileName}\" (was \"{previous}\").");
+        return previous;
     }
 
     public void Restore(string? previousProfile)
     {
         EnsureClosed();
         Backup();
-        using var connection = Open(DatabasePath, SqliteOpenMode.ReadWrite);
-        using var tx = connection.BeginTransaction();
-        var values = ReadProfiles(connection, tx);
-        string target = previousProfile is { } p && p != ProfileName && values.ContainsKey($"Capture/{p}") ? p : "Default";
-        Upsert(connection, tx, "DefaultCaptureProfile", target);
-        tx.Commit();
-        SqliteConnection.ClearPool(connection);
+        using var connection = SqliteDatabase.Open(DatabasePath);
+        connection.InTransaction(() =>
+        {
+            var values = ReadProfiles(connection);
+            string target = previousProfile is { } p && p != ProfileName && values.ContainsKey($"Capture/{p}") ? p : "Default";
+            Upsert(connection, "DefaultCaptureProfile", target);
+            Log.Info($"TeamSpeak capture profile restored to \"{target}\".");
+        });
     }
 
-    public string? LastBackupPath { get; private set; }
+    // Used when uninstalling: switch back and delete the profile entirely.
+    public void RemoveProfile(string? previousProfile)
+    {
+        Restore(previousProfile);
+        using var connection = SqliteDatabase.Open(DatabasePath);
+        connection.InTransaction(() =>
+        {
+            connection.Execute("DELETE FROM Profiles WHERE key = ?", $"Capture/{ProfileName}");
+            connection.Execute("DELETE FROM Profiles WHERE key = ?", $"Capture/{ProfileName}/PreProcessing");
+        });
+    }
 
     private void EnsureClosed()
     {
@@ -139,50 +152,35 @@ public sealed class TeamSpeakSettings
 
     private void Backup()
     {
-        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-        string target = Path.Combine(ConfigDirectory, $"settings.db.radiopassthrough-{stamp}.bak");
+        string dir = ConfigDirectory;
+        string target = Path.Combine(dir, $"{BackupPrefix}{DateTime.Now:yyyyMMdd-HHmmss}.bak");
         CopyShared(DatabasePath, target);
         if (File.Exists(DatabasePath + "-journal")) CopyShared(DatabasePath + "-journal", target + "-journal");
         LastBackupPath = target;
-    }
 
-    private static SqliteConnection Open(string path, SqliteOpenMode mode)
-    {
-        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        foreach (string old in Directory.EnumerateFiles(dir, BackupPrefix + "*.bak").OrderByDescending(f => f).Skip(BackupsKept))
         {
-            DataSource = path,
-            Mode = mode,
-            Pooling = false,
-        }.ToString());
-        connection.Open();
-        return connection;
+            try
+            {
+                File.Delete(old);
+                if (File.Exists(old + "-journal")) File.Delete(old + "-journal");
+            }
+            catch (IOException) { }
+        }
     }
 
-    private static Dictionary<string, string?> ReadProfiles(SqliteConnection connection, SqliteTransaction? tx = null)
+    private static Dictionary<string, string?> ReadProfiles(SqliteDatabase connection)
     {
-        using var command = connection.CreateCommand();
-        command.Transaction = tx;
-        command.CommandText = "SELECT key, value FROM Profiles";
-        using var reader = command.ExecuteReader();
         var values = new Dictionary<string, string?>(StringComparer.Ordinal);
-        while (reader.Read())
-            values[reader.GetString(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
+        foreach (var row in connection.Query("SELECT key, value FROM Profiles"))
+            if (row[0] is { } key) values[key] = row[1];
         return values;
     }
 
-    private static void Upsert(SqliteConnection connection, SqliteTransaction tx, string key, string value)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = tx;
-        command.CommandText = """
-            INSERT INTO Profiles (timestamp, key, value) VALUES ($ts, $key, $value)
-            ON CONFLICT(key) DO UPDATE SET timestamp = excluded.timestamp, value = excluded.value
-            """;
-        command.Parameters.AddWithValue("$ts", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-        command.Parameters.AddWithValue("$key", key);
-        command.Parameters.AddWithValue("$value", value);
-        command.ExecuteNonQuery();
-    }
+    private static void Upsert(SqliteDatabase connection, string key, string value) => connection.Execute(
+        "INSERT INTO Profiles (timestamp, key, value) VALUES (?, ?, ?) " +
+        "ON CONFLICT(key) DO UPDATE SET timestamp = excluded.timestamp, value = excluded.value",
+        DateTimeOffset.UtcNow.ToUnixTimeSeconds(), key, value);
 
     private static TeamSpeakProfile ParseProfile(string name, string? value)
     {

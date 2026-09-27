@@ -95,6 +95,11 @@
         <Border Style="{StaticResource Card}">
             <StackPanel>
                 <Grid Style="{StaticResource Row}">
+                    <TextBlock Text="Send game audio over radio" Style="{StaticResource RowLabel}" />
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding GameAudioEnabled}" HorizontalAlignment="Right" AutomationProperties.Name="Send game audio over radio" />
+                </Grid>
+                <Border Style="{StaticResource Divider}" />
+                <Grid Style="{StaticResource Row}">
                     <TextBlock Text="Mix" Style="{StaticResource RowLabel}" />
                     <c:SegmentedControl Items="{StaticResource Presets}" SelectedIndex="{Binding PresetIndex}" Width="196" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 </Grid>

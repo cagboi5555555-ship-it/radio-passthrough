@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using RadioPassthrough.Core.Diagnostics;
 using RadioPassthrough.Core.Dsp;
 using RadioPassthrough.Core.Game;
 
@@ -64,7 +65,13 @@ public sealed class AudioEngine : IAsyncDisposable
 
     public Mixer Mixer => _mixer;
 
-    public bool GateOpen => _radioKey || _latch;
+    // Master switch: off means mic only, as if the app weren't adding anything.
+    public bool GameAudioEnabled { get; set; } = true;
+
+    // While a test runs the radio key always works, even with game audio switched off.
+    public bool TestActive { get; set; }
+
+    public bool GateOpen => _latch || (_radioKey && (GameAudioEnabled || TestActive));
 
     public bool RadioKeyHeld => _radioKey;
 
@@ -134,6 +141,12 @@ public sealed class AudioEngine : IAsyncDisposable
             problem = await ReconcileSinkAsync().ConfigureAwait(false) ?? problem;
             problem = await ReconcileMicAsync().ConfigureAwait(false) ?? problem;
             problem = await ReconcileGameAsync().ConfigureAwait(false) ?? problem;
+        }
+        catch (Exception e)
+        {
+            // Anything unexpected from the audio stack: report it, and the retry below tries again.
+            Log.Error("Audio setup failed", e);
+            problem = $"Audio error: {e.Message}";
         }
         finally
         {
@@ -221,7 +234,7 @@ public sealed class AudioEngine : IAsyncDisposable
             _gameActive = true;
             return null;
         }
-        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or UnauthorizedAccessException or PlatformNotSupportedException)
         {
             return $"Couldn't capture {target.Value.Name}'s audio: {ex.Message}";
         }
@@ -231,6 +244,7 @@ public sealed class AudioEngine : IAsyncDisposable
 
     private void OnFault(Part part, object faulted)
     {
+        Log.Warn($"{part} stream stopped unexpectedly; reopening.");
         _ = Task.Run(async () =>
         {
             await _ops.WaitAsync().ConfigureAwait(false);
@@ -288,7 +302,14 @@ public sealed class AudioEngine : IAsyncDisposable
             GameIsTestSource = _testSource is not null,
             Problem = problem,
         };
+        var previous = Volatile.Read(ref _status);
         Volatile.Write(ref _status, status);
+        if (status != previous)
+        {
+            Log.Info($"Engine: cable={(status.CableFound ? "yes" : "no")}, mic={status.MicName ?? "none"}, " +
+                     $"game={(status.GameAttached ? status.GameName : "none")}{(status.GameIsTestSource ? " (test)" : "")}" +
+                     (status.Problem is null ? "" : $", problem: {status.Problem}"));
+        }
         StatusChanged?.Invoke(status);
     }
 
@@ -336,7 +357,25 @@ public sealed class AudioEngine : IAsyncDisposable
 
         public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(CaptureSource.SampleRate, 2);
 
+        private bool _loggedFailure;
+
+        // Runs on the audio thread: it must never throw, or Windows stops the stream.
         public int Read(Span<byte> buffer)
+        {
+            try
+            {
+                return Mix(buffer);
+            }
+            catch (Exception e)
+            {
+                if (!_loggedFailure) Log.Error("Mixing failed; sending silence for this block", e);
+                _loggedFailure = true;
+                buffer.Clear();
+                return buffer.Length;
+            }
+        }
+
+        private int Mix(Span<byte> buffer)
         {
             var output = MemoryMarshal.Cast<byte, float>(buffer);
             int frames = output.Length / 2;

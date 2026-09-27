@@ -1,52 +1,79 @@
 # Radio Passthrough
 
-Sends your Arma 3 game audio over ACRE2 radio together with your voice, so people on the radio hear the gunfire around you. It does what the unit's "Game over Radio" guide does, without Voicemeeter, MacroButtons or AutoHotkey.
-
-## How it works
+When you talk on an ACRE2 radio in Arma 3, your teammates hear the fight around you (gunfire, engines, explosions) behind your voice. It does what the unit's "Game over Radio" guide does, without Voicemeeter, MacroButtons or AutoHotkey, and it sets itself up.
 
 ```
-Mic ───────────────────────────────┐
-Arma 3's own audio ── radio key ───┴─► mix ─► VB-CABLE ─► TeamSpeak mic ("Radio Passthrough" profile)
+Your mic ─────────────────────────────┐
+Arma 3's own sound ── radio key held ─┴─► mix ─► VB-CABLE ─► TeamSpeak's mic
 ```
 
-- Your mic always goes to TeamSpeak.
-- Arma's audio is added **only while you hold a radio key** (ACRE2 defaults: Caps Lock, Shift/Ctrl/Alt + Caps Lock) and Arma is the active window. Direct speech stays voice only.
-- Arma and TeamSpeak keep playing to your headset exactly as before. The app records Arma straight from the game, so nothing is rerouted.
-- **Doc 1:1** (default) is the guide's sound: voice plus game summed, nothing added. TeamSpeak's own processing (noise removal, auto volume) is copied unchanged from your current profile.
+- Direct speech stays voice only. Game sound is added **only while you hold a radio key** in Arma (ACRE2 defaults: Caps Lock, and Shift, Ctrl or Alt + Caps Lock).
+- Your headset keeps playing Arma and TeamSpeak exactly as before. Nothing gets rerouted.
+- The default **Doc 1:1** mix is the guide's sound: voice plus game, nothing added. TeamSpeak keeps your usual noise removal and volume settings.
 
-## Setup
+## Install (about two minutes)
 
-1. Install [VB-CABLE](https://vb-audio.com/Cable/): run `VBCABLE_Setup_x64.exe` as administrator → Install Driver, then restart.
-2. Run `publish\RadioPassthrough.exe`. It opens on **Setup**.
-3. Close TeamSpeak, then press **Set up** next to *TeamSpeak microphone*. This adds a "Radio Passthrough" capture profile and makes it the default. A backup of TeamSpeak's settings is saved next to the original. **Restore normal mic** undoes it.
-4. Leave **Start with Windows** on. TeamSpeak's mic is the cable on every server, so the app needs to be running.
+1. Download **RadioPassthrough-Setup-x.y.z.exe** and run it.
+   - If Windows says *"Windows protected your PC"*, click **More info → Run anyway**. The file isn't code-signed; that's all the warning means.
+2. Click **Install**. No admin rights needed. Radio Passthrough opens on its checklist.
+3. Click the buttons in the checklist, top to bottom:
+   - **VB-CABLE → Install.** It's downloaded from VB-Audio, checked, and installed. Approve the one Windows prompt.
+   - **TeamSpeak microphone → Set up.** If TeamSpeak is open it closes for a moment and comes back.
+4. Done. When the top line says **Ready**, join your server and use your radio as normal.
 
-## Testing the sound
+The app starts with Windows and sits in the tray (the radio-wave icon). Closing the window keeps it running. It has to be running for TeamSpeak to hear you.
+
+## Check how you sound
 
 On the **Test** tab:
 
-- Play a video in your browser, pick it under *Take it from*, press **Record 10 seconds**, talk, then hold your radio key (or the on-screen button) and keep talking.
-- Play back **What TeamSpeak gets**, or **What a teammate hears**. The second option runs TeamSpeak's Opus codec at your channel quality and then ACRE2's own receive effect: the filters, noise, ring modulation and sample-hold distortion, ported from ACRE2's source.
-- Switch between **Doc 1:1** and **Custom** on the same recording to compare.
-- **Through TeamSpeak** records TeamSpeak's own *Begin Test* playback, so you hear its real noise removal and auto volume on the mix.
+1. Play a video with gunfire in your browser and pick it under *Take it from*.
+2. Press **Record 10 seconds**. Talk, then hold your radio key (or *Hold here to talk on the radio*) and keep talking.
+3. Play it back as **What TeamSpeak gets**, or as **What a teammate hears**. The second one uses TeamSpeak's Opus codec plus ACRE2's own radio filter, noise and distortion.
 
 Nothing on the Test tab changes your settings.
 
-## Known limits (same as the guide)
+## Everyday controls
 
-- While you hold a radio key, players standing next to you also hear the game audio in your voice. ACRE sends one voice stream for both.
-- The mix follows your keys, not ACRE's internal state. Pressing a radio key with no radio still adds game audio.
-- If Arma runs as administrator, the app must too. The Setup tab offers a restart as admin.
+- **Live tab:** see when you're on the radio and your levels. Switch *Send game audio over radio* off to go voice-only.
+- **Custom mix:** adjust game level, dip the game while you talk, even out your voice, or catch loud peaks. Compare against Doc 1:1 on the Test tab first.
+- **Radio keys:** add or remove keys (mouse side buttons work) if you changed ACRE's keybinds.
+- **Tray menu:** open the app, switch game audio on or off, or quit.
 
-## Build
+## If something's wrong
 
-Requires the .NET 10 SDK.
+| What happens | Try this |
+|---|---|
+| Nobody hears me at all | Is Radio Passthrough running (tray icon)? Open it and check the top line. |
+| Teammates hear me but no game sound | Hold the radio key **in Arma** (it only counts while Arma is the active window). The Live tab should say *On the radio*. |
+| Setup says Arma runs as administrator | Click **Restart as admin**, or stop running Arma as admin. |
+| My speakers or mic switched to "CABLE" | The app switches them back by itself (Setup → *Keep my speakers and mic as the defaults*). |
+| Game too loud or quiet on the radio | Live → Mix → **Custom** → *Game level*. Test it on the Test tab. |
+| Still stuck | Setup → **Copy diagnostics**, then paste it to whoever helps you. |
+
+## Uninstall
+
+Go to **Settings → Apps → Radio Passthrough → Uninstall**. TeamSpeak goes back to your normal mic and the app, its settings and logs are removed. VB-CABLE stays; remove it there too if you want.
+
+## Safety and privacy
+
+- Nothing is injected into Arma. The app never touches the game process. It hears the game's sound through Windows (per-app audio capture) and reads the state of your radio keys only.
+- It changes TeamSpeak's capture profile (after backing up `settings.db`) and, if needed, puts your Windows default devices back.
+- Network: it downloads VB-CABLE from vb-audio.com when you press Install, and checks GitHub once a day for a newer release. Nothing else is sent.
+
+## For developers
+
+Requires the .NET 10 SDK on Windows.
 
 ```
 dotnet test
-dotnet publish src/RadioPassthrough -c Release -o publish
+powershell -ExecutionPolicy Bypass -File .\build.ps1      # → dist\RadioPassthrough-Setup-<version>.exe
 ```
 
-`RadioPassthrough.exe --snapshot <dir> [--theme light|dark]` renders each tab to PNG off-screen. It's for design review.
+- `src/RadioPassthrough.Core`: audio engine, mixer, ACRE2 effect, radio keys, TeamSpeak settings, installer, device guard.
+- `src/RadioPassthrough`: WPF app (Live / Test / Setup, tray, installer window).
+- `tests`: unit tests plus silent device tests (tones only ever go into VB-CABLE).
+- `RadioPassthrough.exe --snapshot <dir> [--theme light|dark]` renders every screen to PNG off-screen. `--portable` runs without installing.
+- Pushing a `v*` tag builds and publishes a GitHub release (`.github/workflows/build.yml`).
 
-The ACRE2 receive effect in `src/RadioPassthrough.Core/Dsp/AcreRadioEffect.cs` follows IDI-Systems/acre2 (GPL-3.0).
+GPL-3.0. See `LICENSE` and `THIRD-PARTY-NOTICES.md`.

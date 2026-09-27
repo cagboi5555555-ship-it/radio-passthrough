@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using RadioPassthrough.Core.Native;
 using RadioPassthrough.Core.Setup;
 
 namespace RadioPassthrough.Tests;
@@ -14,40 +14,23 @@ public sealed class TeamSpeakSettingsTests : IDisposable
     {
         Directory.CreateDirectory(Path.Combine(_dir, "plugins"));
         File.WriteAllBytes(Path.Combine(_dir, "plugins", "acre2_win64.dll"), []);
-        using var c = new SqliteConnection($"Data Source={Path.Combine(_dir, "settings.db")};Pooling=False");
-        c.Open();
-        Exec(c, "CREATE TABLE Profiles (timestamp INTEGER UNSIGNED NOT NULL, key VARCHAR NOT NULL UNIQUE, value VARCHAR)");
-        Insert(c, "Capture/", null);
-        Insert(c, "DefaultCaptureProfile", "Default");
-        Insert(c, "DefaultPlaybackProfile", "Default");
-        Insert(c, "Capture/Default", $"DeviceDisplayName=In 1-2 (MOTU M Series)\nDevice={MicId}\nMode=");
-        Insert(c, "Capture/Default/PreProcessing", PreProcessing);
-    }
-
-    private static void Exec(SqliteConnection c, string sql)
-    {
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = sql;
-        cmd.ExecuteNonQuery();
-    }
-
-    private static void Insert(SqliteConnection c, string key, string? value)
-    {
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = "INSERT INTO Profiles VALUES (1, $k, $v)";
-        cmd.Parameters.AddWithValue("$k", key);
-        cmd.Parameters.AddWithValue("$v", (object?)value ?? DBNull.Value);
-        cmd.ExecuteNonQuery();
+        using var db = SqliteDatabase.Create(Path.Combine(_dir, "settings.db"));
+        db.Execute("CREATE TABLE Profiles (timestamp INTEGER UNSIGNED NOT NULL, key VARCHAR NOT NULL UNIQUE, value VARCHAR)");
+        foreach (var (key, value) in new (string, string?)[]
+                 {
+                     ("Capture/", null),
+                     ("DefaultCaptureProfile", "Default"),
+                     ("DefaultPlaybackProfile", "Default"),
+                     ("Capture/Default", $"DeviceDisplayName=In 1-2 (MOTU M Series)\nDevice={MicId}\nMode="),
+                     ("Capture/Default/PreProcessing", PreProcessing),
+                 })
+            db.Execute("INSERT INTO Profiles VALUES (1, ?, ?)", key, value);
     }
 
     private string? Value(string key)
     {
-        using var c = new SqliteConnection($"Data Source={Path.Combine(_dir, "settings.db")};Mode=ReadOnly;Pooling=False");
-        c.Open();
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT value FROM Profiles WHERE key = $k";
-        cmd.Parameters.AddWithValue("$k", key);
-        return cmd.ExecuteScalar() as string;
+        using var db = SqliteDatabase.Open(Path.Combine(_dir, "settings.db"), readOnly: true);
+        return db.Query("SELECT value FROM Profiles WHERE key = ?", key).FirstOrDefault()?[0];
     }
 
     [Fact]
@@ -70,20 +53,32 @@ public sealed class TeamSpeakSettingsTests : IDisposable
         Assert.Equal(TeamSpeakSettings.ProfileName, Value("DefaultCaptureProfile"));
         Assert.Equal($"DeviceDisplayName=CABLE Output (VB-Audio Virtual Cable)\nDevice={CableId}\nMode=", Value("Capture/Radio Passthrough"));
         Assert.Equal(PreProcessing, Value("Capture/Radio Passthrough/PreProcessing"));
-        Assert.Equal($"DeviceDisplayName=In 1-2 (MOTU M Series)\nDevice={MicId}\nMode=", Value("Capture/Default")); // untouched
+        Assert.Equal($"DeviceDisplayName=In 1-2 (MOTU M Series)\nDevice={MicId}\nMode=", Value("Capture/Default"));
         Assert.True(File.Exists(ts.LastBackupPath));
-
-        var state = ts.Read();
-        Assert.Equal(CableId, state.ActiveCapture?.DeviceId);
+        Assert.Equal(CableId, ts.Read().ActiveCapture?.DeviceId);
     }
 
     [Fact]
-    public void Restore_switches_back()
+    public void Applying_twice_keeps_the_real_previous_profile()
+    {
+        var ts = new TeamSpeakSettings(_dir, () => false);
+        ts.Apply(CableId, "CABLE Output");
+        Assert.Equal("Default", ts.Apply(CableId, "CABLE Output"));
+    }
+
+    [Fact]
+    public void Restore_switches_back_and_remove_deletes_the_profile()
     {
         var ts = new TeamSpeakSettings(_dir, () => false);
         string previous = ts.Apply(CableId, "CABLE Output");
         ts.Restore(previous);
         Assert.Equal("Default", Value("DefaultCaptureProfile"));
+
+        ts.Apply(CableId, "CABLE Output");
+        ts.RemoveProfile(previous);
+        Assert.Equal("Default", Value("DefaultCaptureProfile"));
+        Assert.Null(Value("Capture/Radio Passthrough"));
+        Assert.Null(Value("Capture/Radio Passthrough/PreProcessing"));
     }
 
     [Fact]
@@ -94,9 +89,20 @@ public sealed class TeamSpeakSettingsTests : IDisposable
         Assert.Equal("Default", Value("DefaultCaptureProfile"));
     }
 
+    [Fact]
+    public void Keeps_only_the_newest_backups()
+    {
+        var ts = new TeamSpeakSettings(_dir, () => false);
+        for (int i = 0; i < 8; i++)
+        {
+            File.WriteAllText(Path.Combine(_dir, $"settings.db.radiopassthrough-2020010{i}-000000.bak"), "old");
+        }
+        ts.Apply(CableId, "CABLE Output");
+        Assert.Equal(5, Directory.EnumerateFiles(_dir, "settings.db.radiopassthrough-*.bak").Count());
+    }
+
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
-        try { Directory.Delete(_dir, true); } catch { }
+        try { Directory.Delete(_dir, true); } catch (IOException) { }
     }
 }

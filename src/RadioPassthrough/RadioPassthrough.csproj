@@ -6,35 +6,33 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>RadioPassthrough</AssemblyName>
     <RootNamespace>RadioPassthrough</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Product>Radio Passthrough</Product>
+    <Company>Radio Passthrough</Company>
+    <Copyright>Radio Passthrough contributors. GPL-3.0.</Copyright>
     <Description>Sends Arma 3 game audio over ACRE2 radio with your voice.</Description>
-    <!-- DPI awareness comes from app.manifest, which is right for WPF; WinForms is only used for the tray icon. -->
-    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
+    <!-- WPF needs its own native DLLs (wpfgfx, PresentationNative); bundle them so one file is enough. -->
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>none</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
-    <Using Remove="System.Windows.Forms" />
-    <Using Remove="System.Drawing" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\app.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -71,13 +71,33 @@ public sealed class LiveViewModel : ObservableObject
         }
     }
 
-    public string HeroTitle => OnAir ? "On the radio" : "Standing by";
+    public string HeroTitle => OnAir ? "On the radio" : GameAudioEnabled ? "Standing by" : "Game audio off";
 
     public string HeroDetail => OnAir
         ? "Game audio is going out with your voice."
-        : _app.Arma.Current is null
-            ? "Start Arma 3. Game audio joins your voice while you hold a radio key."
-            : "Hold a radio key in Arma to send game audio with your voice.";
+        : !GameAudioEnabled
+            ? "Your radio carries your voice only. Switch game audio back on below."
+            : _app.Arma.Current is null
+                ? "Start Arma 3. Game audio joins your voice while you hold a radio key."
+                : "Hold a radio key in Arma to send game audio with your voice.";
+
+    public bool GameAudioEnabled
+    {
+        get => _app.Settings.GameAudioEnabled;
+        set
+        {
+            if (_app.Settings.GameAudioEnabled == value) return;
+            _app.Settings.GameAudioEnabled = value;
+            _app.Engine.GameAudioEnabled = value;
+            _app.ScheduleSave();
+            Core.Diagnostics.Log.Info($"Game audio over radio turned {(value ? "on" : "off")}.");
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HeroTitle));
+            OnPropertyChanged(nameof(HeroDetail));
+        }
+    }
+
+    public void ToggleGameAudio() => GameAudioEnabled = !GameAudioEnabled;
 
     public void Tick(double now, double dt)
     {
@@ -199,7 +219,7 @@ public sealed class LiveViewModel : ObservableObject
     private void BeginCapture()
     {
         Capturing = true;
-        _app.Hook.CaptureNext(binding => Application.Current.Dispatcher.BeginInvoke(() =>
+        _app.Keys.CaptureNext(binding => Application.Current.Dispatcher.BeginInvoke(() =>
         {
             Capturing = false;
             if (binding is null) return;
@@ -210,13 +230,13 @@ public sealed class LiveViewModel : ObservableObject
 
     public void CancelCapture()
     {
-        if (_capturing) _app.Hook.CancelCapture();
+        if (_capturing) _app.Keys.CancelCapture();
     }
 
     private void SetBindings(List<PttBinding> bindings)
     {
         _app.Settings.Bindings = bindings;
-        _app.Hook.SetBindings(bindings);
+        _app.Keys.SetBindings(bindings);
         _app.ScheduleSave();
         RebuildBindings();
     }

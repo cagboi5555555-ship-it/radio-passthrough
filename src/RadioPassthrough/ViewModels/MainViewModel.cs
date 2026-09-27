@@ -58,7 +58,11 @@ public sealed class MainViewModel : ObservableObject
     public CheckLevel StatusLevel { get => _statusLevel; private set => Set(ref _statusLevel, value); }
 
     // Timers only run while the window is visible (see SetVisible).
-    public void Start() => _ = Setup.RefreshAsync();
+    public void Start()
+    {
+        _ = Setup.RefreshAsync();
+        _ = Setup.CheckForUpdateAsync();
+    }
 
     // Stops UI-only work while the window is hidden in the tray.
     public void SetVisible(bool visible)

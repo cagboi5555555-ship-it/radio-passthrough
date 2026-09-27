@@ -58,6 +58,36 @@ public class DeviceTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    public void Setting_the_current_default_again_is_accepted_by_windows()
+    {
+        // A no-op on purpose: proves the Windows interface works without changing anything.
+        var system = new WindowsDefaultDevices();
+        var current = system.GetDefault(DataFlow.Render, DeviceRole.Console);
+        if (current is null) return;
+        PolicyConfig.SetDefault(current.Id, DeviceRole.Console);
+        Assert.Equal(current.Id, system.GetDefault(DataFlow.Render, DeviceRole.Console)!.Id);
+    }
+
+    [Fact]
+    public void Signature_check_trusts_windows_files_but_only_vb_audio_for_the_cable()
+    {
+        string explorer = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+        Assert.False(RadioPassthrough.Core.Setup.CableInstaller.IsSignedByVbAudio(explorer, out string signer));
+        Assert.Contains("Microsoft", signer); // valid signature, wrong publisher
+
+        string unsigned = Path.Combine(Path.GetTempPath(), $"rp-unsigned-{Guid.NewGuid():N}.exe");
+        File.WriteAllBytes(unsigned, new byte[1024]);
+        try
+        {
+            Assert.False(RadioPassthrough.Core.Setup.CableInstaller.IsSignedByVbAudio(unsigned, out _));
+        }
+        finally
+        {
+            File.Delete(unsigned);
+        }
+    }
+
+    [Fact]
     public async Task Process_capture_hears_only_that_process()
     {
         var cableIn = AudioDevices.CableInput();

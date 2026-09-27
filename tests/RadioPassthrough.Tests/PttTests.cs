@@ -42,7 +42,7 @@ public class PttTests
         var state = new PttState(PttBinding.AcreDefaults());
         state.OnTrigger(TriggerKind.Key, Caps, true, Modifiers.Shift, gameFocused: true);
         Assert.True(state.IsOpen);
-        state.OnTrigger(TriggerKind.Key, Caps, true, Modifiers.None, gameFocused: true); // auto-repeat after Shift let go
+        state.OnTrigger(TriggerKind.Key, Caps, true, Modifiers.None, gameFocused: true);
         Assert.True(state.IsOpen);
         state.OnTrigger(TriggerKind.Key, Caps, false, Modifiers.None, gameFocused: true);
         Assert.False(state.IsOpen);
