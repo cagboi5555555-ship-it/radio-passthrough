@@ -100,4 +100,22 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1      # → dist\RadioPassth
 - `--selftest <file>` checks the parts that need real Windows (tray, SQLite, key reading, device guard, windows, no network code loaded) without showing or changing anything. `build.ps1` runs it on the finished file.
 - Releases come only from GitHub: pushing a `v*` tag runs the tests, builds, self-tests, signs a build record and publishes the release (`.github/workflows/build.yml`). The tag must match `<Version>` in `RadioPassthrough.csproj`, and the release notes come from `CHANGELOG.md`.
 
+## Code signing policy
+
+Radio Passthrough has applied for free code signing from [SignPath.io](https://about.signpath.io), with a certificate by [SignPath Foundation](https://signpath.org). Until that's approved, releases are unsigned; you can still [check any download](SECURITY.md#verifying-a-download).
+
+- Only files built by this repository's GitHub workflow from a `v*` tag are released (and, once approved, signed). Nothing built on a personal PC is ever released.
+- A release only happens when an approver deliberately pushes a version tag.
+
+**Team roles**
+
+- Committers and reviewers: [cagboi5555555-ship-it](https://github.com/cagboi5555555-ship-it)
+- Approvers: [cagboi5555555-ship-it](https://github.com/cagboi5555555-ship-it)
+
+**Privacy policy**
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. The only such case is *Get VB-CABLE*, which opens VB-Audio's website in your browser. Everything else, including logs and settings, stays on your PC.
+
+## License
+
 GPL-3.0. See `LICENSE` and `THIRD-PARTY-NOTICES.md`. Security questions: see `SECURITY.md`.
