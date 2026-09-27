@@ -336,10 +336,25 @@ public sealed class TestViewModel : ObservableObject
             });
         }
 
-        await _player.PlayAsync(clip);
+        try
+        {
+            await _player.PlayAsync(clip);
+            PlayMessage = null;
+        }
+        catch (Exception e)
+        {
+            // No default playback device, or it's in exclusive use by another app.
+            Core.Diagnostics.Log.Warn($"Playback failed: {e.Message}");
+            PlayMessage = "Couldn't play on your default speakers. Check Windows has a playback device selected.";
+            return;
+        }
         PlayingTs = teamSpeakClip;
         IsPlaying = true;
     }
+
+    private string? _playMessage;
+
+    public string? PlayMessage { get => _playMessage; private set => Set(ref _playMessage, value); }
 
     private async Task TeamSpeakTestAsync()
     {
@@ -349,15 +364,12 @@ public sealed class TestViewModel : ObservableObject
             return;
         }
 
-        var ts = Process.GetProcessesByName("ts3client_win64").Concat(Process.GetProcessesByName("ts3client_win32")).FirstOrDefault();
-        if (ts is null)
+        if (TeamSpeakClient.ProcessId() is not int pid)
         {
             TsMessage = "Open TeamSpeak first, then start the test.";
             return;
         }
 
-        int pid = ts.Id;
-        ts.Dispose();
         TsMessage = "Now click Begin Test in TeamSpeak's Options → Capture, and talk.";
         _tsCts = new CancellationTokenSource();
         TsRunning = true;

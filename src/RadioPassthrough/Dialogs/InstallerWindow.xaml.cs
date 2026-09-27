@@ -27,9 +27,6 @@ public partial class InstallerWindow : Window
         if (installed is not null) DesktopShortcut.IsChecked = installation.HasDesktopShortcut;
     }
 
-    // Set once the installed copy has been started.
-    public bool Installed { get; private set; }
-
     private async void Install_Click(object sender, RoutedEventArgs e)
     {
         InstallButton.IsEnabled = CancelButton.IsEnabled = CloseButton.IsEnabled = false;
@@ -44,7 +41,6 @@ public partial class InstallerWindow : Window
                 _installation.Install(source, AppInfo.Version, desktop, startWithWindows: true);
             });
             Process.Start(new ProcessStartInfo(_installation.ExePath, "--installed") { UseShellExecute = true, WorkingDirectory = _installation.InstallDirectory })?.Dispose();
-            Installed = true;
             Close();
         }
         catch (Exception ex)

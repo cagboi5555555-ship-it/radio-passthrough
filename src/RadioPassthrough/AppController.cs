@@ -111,6 +111,28 @@ public sealed class AppController : IAsyncDisposable
             }
         });
 
+        // When VB-CABLE gets installed while the app runs, tidy up straight away: hide its unused
+        // devices and undo any default-device switch its installer made.
+        bool cableSeen = AudioDevices.CableInput() is not null;
+        Engine.StatusChanged += status =>
+        {
+            if (!status.CableFound || cableSeen) return;
+            cableSeen = true;
+            Log.Info("VB-CABLE appeared.");
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    if (Settings.HideUnusedCableDevices) CableHousekeeping.HideUnusedEndpoints();
+                    DeviceGuard.Check();
+                }
+                catch (Exception e)
+                {
+                    Log.Error("Tidying up after VB-CABLE install failed", e);
+                }
+            });
+        };
+
         await Engine.SetArmaAsync(Arma.Current);
         await Engine.SetMicAsync(Settings.MicDeviceId);
 

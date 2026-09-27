@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
@@ -94,8 +93,7 @@ public sealed class Installation
         }
     }
 
-    // Removes shortcuts, the Apps entry and autostart. Files are removed by ScheduleRemoval once the
-    // app has exited, because a running exe can't delete itself.
+    // Removes shortcuts, the Apps entry and autostart. Files are removed by RemoveFiles.
     public void RemoveIntegration()
     {
         foreach (string link in new[] { StartMenuShortcut, DesktopShortcut })
@@ -109,17 +107,37 @@ public sealed class Installation
         Log.Info("Removed shortcuts, Apps entry and autostart.");
     }
 
-    public static void ScheduleRemoval(params string[] directories)
+    // Deletes the install folder, including the exe that's running right now: Windows won't delete a
+    // running program but will let it be moved, so it's parked in the Temp folder (same drive) where
+    // Windows' own clean-up removes it later. No helper process or script is involved.
+    public static void RemoveFiles(string installDirectory, string? runningExe)
     {
-        var commands = string.Join(" & ", directories.Where(Directory.Exists).Select(d => $"rmdir /s /q \"{d}\""));
-        if (commands.Length == 0) return;
-        Process.Start(new ProcessStartInfo("cmd.exe", $"/c ping 127.0.0.1 -n 4 > nul & {commands}")
+        if (runningExe is not null && File.Exists(runningExe) && IsInside(runningExe, installDirectory))
         {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            WindowStyle = ProcessWindowStyle.Hidden,
-        })?.Dispose();
+            string parked = Path.Combine(Path.GetTempPath(), $"RadioPassthrough-removed-{Guid.NewGuid():N}.tmp");
+            if (string.Equals(Path.GetPathRoot(Path.GetFullPath(parked)), Path.GetPathRoot(Path.GetFullPath(runningExe)), StringComparison.OrdinalIgnoreCase))
+            {
+                try { File.Move(runningExe, parked); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        DeleteDirectory(installDirectory);
     }
+
+    public static void DeleteDirectory(string directory)
+    {
+        try
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Something still open in there; the folder stays, harmless.
+        }
+    }
+
+    private static bool IsInside(string file, string directory) =>
+        Path.GetFullPath(file).StartsWith(Path.GetFullPath(directory).TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
 
     private static void CopyWithRetry(string source, string target)
     {

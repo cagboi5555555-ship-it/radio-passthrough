@@ -53,7 +53,17 @@ public static class DiagnosticsReport
 
         sb.AppendLine("Recent log");
         foreach (string line in Log.RecentEntries().TakeLast(60)) sb.AppendLine("  " + line);
-        return sb.ToString();
+        return Redact(sb.ToString());
+    }
+
+    // The report gets pasted in public channels: keep the Windows user name out of it.
+    public static string Redact(string text)
+    {
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (profile.Length > 3) text = text.Replace(profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+        string user = Environment.UserName;
+        if (user.Length > 2) text = System.Text.RegularExpressions.Regex.Replace(text, $@"\b{System.Text.RegularExpressions.Regex.Escape(user)}\b", "<user>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return text;
     }
 
     private static void AppendDevices(StringBuilder sb, DataFlow flow)

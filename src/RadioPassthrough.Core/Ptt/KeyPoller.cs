@@ -16,7 +16,7 @@ public sealed partial class KeyPoller : IDisposable
     private readonly Func<int, bool> _isDown;
     private readonly object _lock = new();
     private readonly Dictionary<(TriggerKind Kind, int Code), bool> _previous = new();
-    private IReadOnlyList<PttBinding> _bindings;
+    private (TriggerKind Kind, int Code)[] _triggers;
     private Action<PttBinding?>? _capture;
     private bool[]? _captureBaseline;
     private Thread? _thread;
@@ -24,7 +24,7 @@ public sealed partial class KeyPoller : IDisposable
 
     public KeyPoller(IReadOnlyList<PttBinding> bindings, Func<bool> gameFocused, Func<int, bool>? isDown = null)
     {
-        _bindings = bindings;
+        _triggers = Triggers(bindings);
         _state = new PttState(bindings);
         _gameFocused = gameFocused;
         _isDown = isDown ?? (vk => (GetAsyncKeyState(vk) & 0x8000) != 0);
@@ -37,6 +37,9 @@ public sealed partial class KeyPoller : IDisposable
     {
         get { lock (_lock) return _state.IsOpen; }
     }
+
+    private static (TriggerKind, int)[] Triggers(IReadOnlyList<PttBinding> bindings) =>
+        bindings.Select(b => (b.Kind, b.Code)).Distinct().ToArray();
 
     public static int VirtualKey(TriggerKind kind, int code) => kind switch
     {
@@ -64,7 +67,7 @@ public sealed partial class KeyPoller : IDisposable
         lock (_lock)
         {
             wasOpen = _state.IsOpen;
-            _bindings = bindings;
+            _triggers = Triggers(bindings);
             _state.SetBindings(bindings);
             _previous.Clear();
         }
@@ -130,7 +133,7 @@ public sealed partial class KeyPoller : IDisposable
             }
             else
             {
-                foreach (var trigger in _bindings.Select(b => (b.Kind, b.Code)).Distinct())
+                foreach (var trigger in _triggers)
                 {
                     int vk = VirtualKey(trigger.Kind, trigger.Code);
                     if (vk == 0) continue;

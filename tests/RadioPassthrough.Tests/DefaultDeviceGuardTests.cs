@@ -29,19 +29,19 @@ public class DefaultDeviceGuardTests
         }
     }
 
-    private static readonly DeviceInfo Headset = new("out-headset", "Speakers (Razer BlackShark V2 Pro)");
-    private static readonly DeviceInfo Motu = new("out-motu", "Out 1-2 (MOTU M Series)");
+    private static readonly DeviceInfo Headset = new("out-headset", "Speakers (USB Headset)");
+    private static readonly DeviceInfo Interface = new("out-interface", "Out 1-2 (USB Audio Interface)");
     private static readonly DeviceInfo CableIn = new("out-cable", "CABLE Input (VB-Audio Virtual Cable)");
     private static readonly DeviceInfo Cable16 = new("out-cable16", "CABLE In 16ch (VB-Audio Virtual Cable)");
-    private static readonly DeviceInfo Mic = new("in-motu", "In 1-2 (MOTU M Series)");
+    private static readonly DeviceInfo Mic = new("in-interface", "In 1-2 (USB Audio Interface)");
     private static readonly DeviceInfo CableOut = new("in-cable", "CABLE Output (VB-Audio Virtual Cable)");
 
     private static FakeSystem System()
     {
         var s = new FakeSystem();
-        s.Render.AddRange([Headset, Motu, CableIn, Cable16]);
+        s.Render.AddRange([Headset, Interface, CableIn, Cable16]);
         s.Capture.AddRange([Mic, CableOut]);
-        s.SetAll(DataFlow.Render, Motu);
+        s.SetAll(DataFlow.Render, Interface);
         s.SetAll(DataFlow.Capture, Mic);
         return s;
     }
@@ -51,7 +51,7 @@ public class DefaultDeviceGuardTests
     {
         var system = System();
         var guard = new DefaultDeviceGuard(system, null, () => null);
-        Assert.Equal(0, guard.Check()); // learns MOTU + mic
+        Assert.Equal(0, guard.Check()); // learns the interface outputs + mic
 
         system.SetAll(DataFlow.Render, Cable16);  // what the VB-CABLE installer tends to do
         system.SetAll(DataFlow.Capture, CableOut);
@@ -59,7 +59,7 @@ public class DefaultDeviceGuardTests
 
         Assert.All(Enum.GetValues<DeviceRole>(), r =>
         {
-            Assert.Equal(Motu.Id, system.GetDefault(DataFlow.Render, r)!.Id);
+            Assert.Equal(Interface.Id, system.GetDefault(DataFlow.Render, r)!.Id);
             Assert.Equal(Mic.Id, system.GetDefault(DataFlow.Capture, r)!.Id);
         });
     }
@@ -76,7 +76,7 @@ public class DefaultDeviceGuardTests
         system.SetAll(DataFlow.Render, CableIn);
         var second = new DefaultDeviceGuard(system, saved, () => null);
         second.Check();
-        Assert.Equal(Motu.Id, system.GetDefault(DataFlow.Render, DeviceRole.Console)!.Id);
+        Assert.Equal(Interface.Id, system.GetDefault(DataFlow.Render, DeviceRole.Console)!.Id);
     }
 
     [Fact]

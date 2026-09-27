@@ -15,7 +15,7 @@ public enum CheckLevel
 public enum CheckAction
 {
     None,
-    InstallCable,
+    GetCable,
     SetUpTeamSpeak,
     RestoreTeamSpeak,
     FixDevices,
@@ -36,8 +36,8 @@ public static class SystemChecks
 
         checks.Add(cable
             ? new Check("VB-CABLE", "Installed. It carries your mixed mic to TeamSpeak.", CheckLevel.Ok)
-            : new Check("VB-CABLE", "Needed to hand your mixed mic to TeamSpeak. Free, from VB-Audio. One Windows prompt, no restart usually.",
-                CheckLevel.Blocking, CheckAction.InstallCable, "Install"));
+            : new Check("VB-CABLE", "Needed to hand your mixed mic to TeamSpeak. Free from VB-Audio's website; install it and this turns green by itself.",
+                CheckLevel.Blocking, CheckAction.GetCable, "Get VB-CABLE"));
 
         if (!ts.Installed)
         {

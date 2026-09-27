@@ -101,10 +101,19 @@ internal static class SelfTest
             return $"{report.Length} chars";
         });
 
-        await Check("Update check", async () =>
+        // The app promises it never goes online. All network traffic in .NET goes through System.Net.Sockets
+        // (HTTP through System.Net.Http, QUIC through System.Net.Quic), so none of them may be loaded.
+        // (WPF itself loads System.Net.WebClient/Requests to read the app's own embedded images via
+        // pack:// URIs; that never touches the network.)
+        await Check("No network code loaded", () =>
         {
-            var update = await UpdateChecker.CheckAsync();
-            return update is null ? "no newer release visible" : $"newer: {update.Version}";
+            string[] networking = ["System.Net.Sockets", "System.Net.Http", "System.Net.Quic"];
+            var network = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetName().Name ?? "")
+                .Where(n => networking.Contains(n))
+                .ToList();
+            if (network.Count > 0) throw new InvalidOperationException("loaded: " + string.Join(", ", network));
+            return Task.FromResult<string?>(null);
         });
 
         lines.Add(ok ? "RESULT PASS" : "RESULT FAIL");

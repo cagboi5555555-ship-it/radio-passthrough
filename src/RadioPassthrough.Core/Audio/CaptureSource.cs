@@ -66,18 +66,29 @@ public sealed class CaptureSource : IAsyncDisposable
         return source;
     });
 
+    private bool _loggedFailure;
+
+    // Runs on the Windows capture thread: nothing may escape from here.
     private void OnData(ReadOnlySpan<byte> buffer, AudioClientBufferFlags flags, long devicePosition, long qpcPosition)
     {
-        int channels = _recorder.WaveFormat.Channels;
-        bool silent = (flags & AudioClientBufferFlags.Silent) != 0;
-        if (silent)
+        try
         {
-            int count = buffer.Length / sizeof(float);
-            if (_silence.Length < count) _silence = new float[count];
-            _handler(_silence.AsSpan(0, count), channels, true);
-            return;
+            int channels = _recorder.WaveFormat.Channels;
+            bool silent = (flags & AudioClientBufferFlags.Silent) != 0;
+            if (silent)
+            {
+                int count = buffer.Length / sizeof(float);
+                if (_silence.Length < count) _silence = new float[count];
+                _handler(_silence.AsSpan(0, count), channels, true);
+                return;
+            }
+            _handler(MemoryMarshal.Cast<byte, float>(buffer), channels, false);
         }
-        _handler(MemoryMarshal.Cast<byte, float>(buffer), channels, false);
+        catch (Exception e)
+        {
+            if (!_loggedFailure) Diagnostics.Log.Error($"Capture from {Name} failed", e);
+            _loggedFailure = true;
+        }
     }
 
     private void OnStopped(object? sender, StoppedEventArgs e)

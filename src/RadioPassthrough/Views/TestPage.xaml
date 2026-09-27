@@ -43,7 +43,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Take it from" Style="{StaticResource RowLabel}" />
                 <ComboBox Grid.Column="1" Style="{StaticResource PopupButton}" Margin="16,0,8,0"
-                          ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}">
+                          ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" AutomationProperties.Name="Take game audio from">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
@@ -51,7 +51,7 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
                 <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE72C;" FontSize="12"
-                        Command="{Binding RefreshSourcesCommand}" ToolTip="Look for apps playing sound" />
+                        Command="{Binding RefreshSourcesCommand}" ToolTip="Look for apps playing sound" AutomationProperties.Name="Refresh the list of apps" />
             </Grid>
         </Border>
 
@@ -157,6 +157,8 @@
                             </StackPanel>
                         </Button>
                     </Grid>
+                    <TextBlock Text="{Binding PlayMessage}" Style="{StaticResource Footnote}" Margin="16,0,16,12"
+                               Visibility="{Binding PlayMessage, Converter={StaticResource NotNull}}" />
                 </StackPanel>
             </Border>
 

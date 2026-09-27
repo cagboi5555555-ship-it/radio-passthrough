@@ -17,6 +17,8 @@ public partial class MainWindow : Window
 
     public bool AllowClose { get; set; }
 
+    public event Action? HiddenToTray;
+
     // Closing hides to the tray; the passthrough keeps running for TeamSpeak.
     protected override void OnClosing(CancelEventArgs e)
     {
@@ -24,6 +26,7 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             Hide();
+            HiddenToTray?.Invoke();
         }
         base.OnClosing(e);
     }

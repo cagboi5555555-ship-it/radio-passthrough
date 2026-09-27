@@ -30,14 +30,6 @@
             </TextBlock>
         </StackPanel>
 
-        <!-- Update available -->
-        <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="16,12" Visibility="{Binding Update, Converter={StaticResource NotNull}}">
-            <Grid>
-                <TextBlock Text="{Binding UpdateText}" Style="{StaticResource RowLabel}" />
-                <Button Style="{StaticResource SmallPrimaryButton}" Content="Download" Command="{Binding OpenUpdateCommand}" HorizontalAlignment="Right" />
-            </Grid>
-        </Border>
-
         <TextBlock Text="Checklist" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">
             <ItemsControl ItemsSource="{Binding Checks}">

@@ -35,15 +35,17 @@ public sealed class SetupViewModel : ObservableObject
     private CheckAction _busyAction = CheckAction.None;
     private string? _busyText;
     private TeamSpeakState? _lastTeamSpeak;
-    private UpdateInfo? _update;
     private bool _allReady;
 
     public SetupViewModel(AppController app)
     {
         _app = app;
         CopyDiagnosticsCommand = new AsyncCommand(CopyDiagnosticsAsync);
-        OpenLogsCommand = new RelayCommand(() => Open(Log.Directory));
-        OpenUpdateCommand = new RelayCommand(() => { if (_update is not null) Open(_update.DownloadUrl ?? _update.PageUrl); });
+        OpenLogsCommand = new RelayCommand(() =>
+        {
+            Directory.CreateDirectory(Log.Directory);
+            Open(Log.Directory);
+        });
     }
 
     public ObservableCollection<CheckItem> Checks { get; } = new();
@@ -54,7 +56,6 @@ public sealed class SetupViewModel : ObservableObject
 
     public ICommand CopyDiagnosticsCommand { get; }
     public ICommand OpenLogsCommand { get; }
-    public ICommand OpenUpdateCommand { get; }
 
     public bool AllReady { get => _allReady; private set => Set(ref _allReady, value); }
 
@@ -115,10 +116,6 @@ public sealed class SetupViewModel : ObservableObject
 
     public CheckLevel MessageLevel { get => _messageLevel; private set => Set(ref _messageLevel, value); }
 
-    public UpdateInfo? Update { get => _update; private set { if (Set(ref _update, value)) OnPropertyChanged(nameof(UpdateText)); } }
-
-    public string? UpdateText => _update is null ? null : $"Version {_update.Version.ToString(3)} is available.";
-
     public string Version => $"Version {AppInfo.Version.ToString(3)}";
 
     public event Action? Refreshed;
@@ -154,7 +151,7 @@ public sealed class SetupViewModel : ObservableObject
                 Microphones.Clear();
                 foreach (var m in mics) Microphones.Add(m);
             }
-            string? current = _app.Settings.MicDeviceId ?? AudioDevices.DefaultMicrophone()?.Id;
+            string? current = _app.Settings.MicDeviceId ?? AudioEngine.FallbackMicrophone();
             SelectedMic = Microphones.FirstOrDefault(m => m.Id == current);
             _suppressMicChange = false;
             OnPropertyChanged(nameof(StartWithWindows));
@@ -191,15 +188,6 @@ public sealed class SetupViewModel : ObservableObject
         OnPropertyChanged(nameof(Headline));
     }
 
-    public async Task CheckForUpdateAsync()
-    {
-        var last = _app.Settings.LastUpdateCheck;
-        if (last is { } t && DateTimeOffset.Now - t < TimeSpan.FromHours(20)) return;
-        Update = await UpdateChecker.CheckAsync();
-        _app.Settings.LastUpdateCheck = DateTimeOffset.Now;
-        _app.ScheduleSave();
-    }
-
     private void Busy(CheckAction action, string? text)
     {
         _busyAction = action;
@@ -214,8 +202,10 @@ public sealed class SetupViewModel : ObservableObject
         {
             switch (action)
             {
-                case CheckAction.InstallCable:
-                    await InstallCableAsync();
+                case CheckAction.GetCable:
+                    Open(VbCableWebsite);
+                    Say("VB-Audio's page is open in your browser. Download the VB-CABLE Driver Pack, unzip it, right-click VBCABLE_Setup_x64.exe → Run as administrator → Install Driver. " +
+                        "This app notices the moment it's installed and finishes the rest.", CheckLevel.Info);
                     break;
                 case CheckAction.SetUpTeamSpeak:
                     await ChangeTeamSpeakAsync(apply: true);
@@ -260,34 +250,8 @@ public sealed class SetupViewModel : ObservableObject
         await RefreshAsync();
     }
 
-    private async Task InstallCableAsync()
-    {
-        Busy(CheckAction.InstallCable, "Getting ready…");
-        var progress = new Progress<string>(text => Busy(CheckAction.InstallCable, text));
-        var result = await CableInstaller.InstallAsync(progress, CancellationToken.None);
-        switch (result.Outcome)
-        {
-            case CableInstallOutcome.Installed:
-                await Task.Run(() =>
-                {
-                    if (_app.Settings.HideUnusedCableDevices) CableHousekeeping.HideUnusedEndpoints();
-                    _app.DeviceGuard.Check();
-                });
-                await _app.Engine.RestartAsync();
-                Say("VB-CABLE is installed. Your own speakers and mic stayed the defaults.", CheckLevel.Ok);
-                break;
-            case CableInstallOutcome.NeedsRestart:
-                Say(result.Message, CheckLevel.Attention);
-                break;
-            case CableInstallOutcome.Cancelled:
-                Say(result.Message, CheckLevel.Info);
-                break;
-            default:
-                Say(result.Message + " You can also install it by hand from vb-audio.com/Cable.", CheckLevel.Blocking);
-                Open(CableInstaller.WebsiteUrl);
-                break;
-        }
-    }
+    // VB-Audio's own page. The app never downloads anything itself.
+    public const string VbCableWebsite = "https://vb-audio.com/Cable/";
 
     private async Task ChangeTeamSpeakAsync(bool apply)
     {

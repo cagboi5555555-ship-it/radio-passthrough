@@ -194,7 +194,7 @@ public sealed class AudioEngine : IAsyncDisposable
 
     private async Task<string?> ReconcileMicAsync()
     {
-        string? wanted = _wantedMicId is { } id && AudioDevices.Exists(id) ? id : AudioDevices.DefaultMicrophone()?.Id;
+        string? wanted = _wantedMicId is { } id && AudioDevices.Exists(id) && id != AudioDevices.CableOutput()?.Id ? id : FallbackMicrophone();
 
         if (_mic is not null && _micDeviceId != wanted)
             await CloseMicAsync().ConfigureAwait(false);
@@ -214,6 +214,15 @@ public sealed class AudioEngine : IAsyncDisposable
         {
             return $"Couldn't open the microphone: {ex.Message}";
         }
+    }
+
+    // Windows' default mic, unless that's the cable: recording our own output would feed it straight
+    // back into TeamSpeak as an echo loop.
+    public static string? FallbackMicrophone()
+    {
+        var preferred = AudioDevices.DefaultMicrophone();
+        if (preferred is not null && !AudioDevices.IsCable(preferred.Name)) return preferred.Id;
+        return AudioDevices.Microphones().FirstOrDefault()?.Id; // this list never contains the cable
     }
 
     private async Task<string?> ReconcileGameAsync()

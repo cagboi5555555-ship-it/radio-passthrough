@@ -116,6 +116,13 @@ public partial class App : Application
             if (p.PropertyName == nameof(MainViewModel.StatusText)) _tray?.SetTooltip($"Radio Passthrough · {_viewModel.StatusText}");
         };
         _controller.DeviceGuard.Restored += message => Dispatcher.BeginInvoke(() => _tray?.ShowMessage("Sound devices put back", message));
+        _window.HiddenToTray += () =>
+        {
+            if (_controller.Settings.TrayHintShown) return;
+            _controller.Settings.TrayHintShown = true;
+            _controller.ScheduleSave();
+            _tray?.ShowMessage("Still running", "Radio Passthrough keeps TeamSpeak's mic working from the tray. Right-click the icon to quit.");
+        };
 
         await _controller.StartAsync();
         _viewModel.Start();
@@ -213,15 +220,25 @@ public partial class App : Application
             return;
 
         _quitting = true;
-        _tray?.Dispose();
-        if (_window is not null)
+        try
         {
-            _window.AllowClose = true;
-            _window.Close();
+            _tray?.Dispose();
+            if (_window is not null)
+            {
+                _window.AllowClose = true;
+                _window.Close();
+            }
+            if (_controller is not null) await _controller.DisposeAsync();
         }
-        if (_controller is not null) await _controller.DisposeAsync();
-        try { _instance?.ReleaseMutex(); } catch (ApplicationException) { }
-        Shutdown();
+        catch (Exception e)
+        {
+            Log.Error("Error while quitting", e); // still exit below
+        }
+        finally
+        {
+            try { _instance?.ReleaseMutex(); } catch (ApplicationException) { }
+            Shutdown();
+        }
     }
 
     private async Task UninstallAsync(bool quiet)
@@ -262,10 +279,10 @@ public partial class App : Application
             SheetDialog.Tell(null, "Radio Passthrough is removed",
                 note + "VB-CABLE is still installed. If you don't need it anymore, remove it in Settings → Apps.");
 
-        // Files go last, once nothing is shown: the running exe is deleted a few seconds after we exit.
-        string roaming = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RadioPassthrough");
-        string local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioPassthrough");
-        Installation.ScheduleRemoval(new Installation().InstallDirectory, roaming, local);
+        // Files go last. Nothing may write a log line after this, or the log folder comes back.
+        Installation.DeleteDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RadioPassthrough"));
+        Installation.DeleteDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioPassthrough"));
+        Installation.RemoveFiles(new Installation().InstallDirectory, Environment.ProcessPath);
     }
 
     // For scripted roll-outs: install or update with no window, then start the installed copy in the tray.

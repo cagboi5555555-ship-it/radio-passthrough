@@ -6,7 +6,7 @@ namespace RadioPassthrough.Tests;
 public sealed class TeamSpeakSettingsTests : IDisposable
 {
     private const string CableId = "{0.0.1.00000000}.{11111111-2222-3333-4444-555555555555}";
-    private const string MicId = "{0.0.1.00000000}.{2b517207-7c94-4d3a-ad08-62de24c1c7c7}";
+    private const string MicId = "{0.0.1.00000000}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}";
     private const string PreProcessing = "echo_reduction=false\nagc=true\ndenoise=true\ndenoiser_level=1\nvad=true";
     private readonly string _dir = Path.Combine(Path.GetTempPath(), $"rp-test-{Guid.NewGuid():N}");
 
@@ -21,7 +21,7 @@ public sealed class TeamSpeakSettingsTests : IDisposable
                      ("Capture/", null),
                      ("DefaultCaptureProfile", "Default"),
                      ("DefaultPlaybackProfile", "Default"),
-                     ("Capture/Default", $"DeviceDisplayName=In 1-2 (MOTU M Series)\nDevice={MicId}\nMode="),
+                     ("Capture/Default", $"DeviceDisplayName=In 1-2 (USB Audio Interface)\nDevice={MicId}\nMode="),
                      ("Capture/Default/PreProcessing", PreProcessing),
                  })
             db.Execute("INSERT INTO Profiles VALUES (1, ?, ?)", key, value);
@@ -53,7 +53,7 @@ public sealed class TeamSpeakSettingsTests : IDisposable
         Assert.Equal(TeamSpeakSettings.ProfileName, Value("DefaultCaptureProfile"));
         Assert.Equal($"DeviceDisplayName=CABLE Output (VB-Audio Virtual Cable)\nDevice={CableId}\nMode=", Value("Capture/Radio Passthrough"));
         Assert.Equal(PreProcessing, Value("Capture/Radio Passthrough/PreProcessing"));
-        Assert.Equal($"DeviceDisplayName=In 1-2 (MOTU M Series)\nDevice={MicId}\nMode=", Value("Capture/Default"));
+        Assert.Equal($"DeviceDisplayName=In 1-2 (USB Audio Interface)\nDevice={MicId}\nMode=", Value("Capture/Default"));
         Assert.True(File.Exists(ts.LastBackupPath));
         Assert.Equal(CableId, ts.Read().ActiveCapture?.DeviceId);
     }

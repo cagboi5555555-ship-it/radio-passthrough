@@ -14,7 +14,7 @@ public sealed class AppSettings
     public bool KeepRealDefaults { get; set; } = true;
     public bool HideUnusedCableDevices { get; set; } = true;
     public Dictionary<string, string> RememberedDefaults { get; set; } = new();
-    public DateTimeOffset? LastUpdateCheck { get; set; }
+    public bool TrayHintShown { get; set; }
     public string? MicDeviceId { get; set; }
     public MicChannelMode MicChannels { get; set; } = MicChannelMode.Both;
     public MixPreset Preset { get; set; } = MixPreset.DocOneToOne;

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Win32;
 using RadioPassthrough.Core;
 using RadioPassthrough.Core.Settings;
@@ -100,31 +99,27 @@ public sealed class InstallationTests : IDisposable
     }
 
     [Fact]
-    public void Update_check_only_reports_newer_releases()
+    public void Removing_files_leaves_no_install_folder_even_while_the_exe_runs()
     {
-        var newer = JsonDocument.Parse("""{ "tag_name": "v99.0.0", "html_url": "https://example/r", "assets": [ { "name": "RadioPassthrough-Setup-99.0.0.exe", "browser_download_url": "https://example/setup.exe" } ] }""");
-        var update = UpdateChecker.Parse(newer.RootElement, new Version(1, 1, 0));
-        Assert.Equal(new Version(99, 0, 0), update?.Version);
-        Assert.Equal("https://example/setup.exe", update?.DownloadUrl);
-
-        var same = JsonDocument.Parse("""{ "tag_name": "v1.1.0" }""");
-        Assert.Null(UpdateChecker.Parse(same.RootElement, new Version(1, 1, 0)));
-    }
-
-    [Fact]
-    public void Picks_the_right_vb_cable_installer_for_this_pc()
-    {
-        string pack = Path.Combine(_root, "pack");
-        Directory.CreateDirectory(pack);
-        foreach (string name in new[] { "VBCABLE_Setup.exe", "VBCABLE_Setup_x64.exe", "VBCABLE_ControlPanel.exe" })
-            File.WriteAllBytes(Path.Combine(pack, name), []);
-        Assert.Equal("VBCABLE_Setup_x64.exe", Path.GetFileName(CableInstaller.FindSetup(pack)));
+        var install = Make();
+        install.Install(FakeExe(), new Version(1, 0, 0), desktopShortcut: false, startWithWindows: false);
+        using (var locked = new FileStream(install.ExePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+        {
+            // A running exe can be renamed but not deleted; FileShare.Delete models that here.
+            Installation.RemoveFiles(install.InstallDirectory, install.ExePath);
+        }
+        Assert.False(Directory.Exists(install.InstallDirectory));
     }
 
     public void Dispose()
     {
         Registry.CurrentUser.DeleteSubKeyTree(_registryPath, throwOnMissingSubKey: false);
         _registry.Dispose();
+        using (var parent = Registry.CurrentUser.OpenSubKey(@"Software\RadioPassthroughTests"))
+        {
+            if (parent is { SubKeyCount: 0, ValueCount: 0 })
+                Registry.CurrentUser.DeleteSubKey(@"Software\RadioPassthroughTests", throwOnMissingSubKey: false);
+        }
         try { Directory.Delete(_root, true); } catch (IOException) { }
     }
 }

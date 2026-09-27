@@ -192,7 +192,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                     <Button Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding Remove}"
-                                            HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip="Remove this key" />
+                                            HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip="Remove this key" AutomationProperties.Name="Remove this key" />
                                 </Grid>
                                 <Border Style="{StaticResource Divider}" />
                             </StackPanel>

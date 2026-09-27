@@ -61,4 +61,4 @@ The app ships with the .NET runtime (self-contained). Copyright © .NET Foundati
 
 ## VB-CABLE (not included)
 
-VB-CABLE is **not** bundled. When you press *Install* on the Setup tab, the app downloads it from VB-Audio's own server (`download.vb-audio.com`). It checks the installer is validly signed by VB-Audio, then runs it. VB-CABLE is donationware by VB-Audio Software (https://vb-audio.com/Cable/). Its license and any donation are between you and VB-Audio.
+VB-CABLE is **not** bundled or downloaded by the app. *Get VB-CABLE* on the Setup tab opens VB-Audio's website, and you install it yourself. VB-CABLE is donationware by VB-Audio Software (https://vb-audio.com/Cable/). Its license and any donation are between you and VB-Audio.

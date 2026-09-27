@@ -6,10 +6,19 @@ using RadioPassthrough.Core.Audio;
 namespace RadioPassthrough.Tests;
 
 // Real-device checks that stay silent: tones only ever go into VB-CABLE, never to speakers.
-// They pass trivially on machines without VB-CABLE.
+// They pass trivially on machines without VB-CABLE, and whenever TeamSpeak or Radio Passthrough is
+// running, because then the cable is live and a teammate would hear the test tone.
 [Collection("Devices")]
 public class DeviceTests(Xunit.Abstractions.ITestOutputHelper output)
 {
+    private bool CableIsFree()
+    {
+        bool live = RadioPassthrough.Core.Setup.TeamSpeakClient.IsRunning()
+                    || System.Diagnostics.Process.GetProcessesByName("RadioPassthrough").Length > 0;
+        if (live) output.WriteLine("Skipped: the cable is in use (TeamSpeak or Radio Passthrough is running).");
+        return !live && AudioDevices.CableInput() is not null && AudioDevices.CableOutput() is not null;
+    }
+
     private sealed class Tone(float frequency, float amplitude) : IWaveProvider
     {
         private long _n;
@@ -42,9 +51,9 @@ public class DeviceTests(Xunit.Abstractions.ITestOutputHelper output)
     [Fact]
     public async Task Tone_sent_into_the_cable_arrives_unchanged_at_TeamSpeaks_side()
     {
-        var cableIn = AudioDevices.CableInput();
-        var cableOut = AudioDevices.CableOutput();
-        if (cableIn is null || cableOut is null) return;
+        if (!CableIsFree()) return;
+        var cableIn = AudioDevices.CableInput()!;
+        var cableOut = AudioDevices.CableOutput()!;
 
         await using var sink = await CableSink.OpenAsync(cableIn.Id, new Tone(1000, 0.25f));
         await Task.Delay(300);
@@ -69,29 +78,10 @@ public class DeviceTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
-    public void Signature_check_trusts_windows_files_but_only_vb_audio_for_the_cable()
-    {
-        string explorer = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-        Assert.False(RadioPassthrough.Core.Setup.CableInstaller.IsSignedByVbAudio(explorer, out string signer));
-        Assert.Contains("Microsoft", signer); // valid signature, wrong publisher
-
-        string unsigned = Path.Combine(Path.GetTempPath(), $"rp-unsigned-{Guid.NewGuid():N}.exe");
-        File.WriteAllBytes(unsigned, new byte[1024]);
-        try
-        {
-            Assert.False(RadioPassthrough.Core.Setup.CableInstaller.IsSignedByVbAudio(unsigned, out _));
-        }
-        finally
-        {
-            File.Delete(unsigned);
-        }
-    }
-
-    [Fact]
     public async Task Process_capture_hears_only_that_process()
     {
-        var cableIn = AudioDevices.CableInput();
-        if (cableIn is null) return;
+        if (!CableIsFree()) return;
+        var cableIn = AudioDevices.CableInput()!;
 
         await using var sink = await CableSink.OpenAsync(cableIn.Id, new Tone(440, 0.3f));
         await Task.Delay(300);

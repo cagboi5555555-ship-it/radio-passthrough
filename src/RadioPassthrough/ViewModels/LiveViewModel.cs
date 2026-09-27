@@ -135,7 +135,7 @@ public sealed class LiveViewModel : ObservableObject
 
     public string MixFootnote => IsCustom
         ? "Your own mix. Compare it with Doc 1:1 on the Test tab before using it on a server."
-        : "The guide's sound: your voice plus the game, nothing added. TeamSpeak's own processing stays as it is today.";
+        : "Your voice plus the game, nothing added: the same sound as the Voicemeeter setup. TeamSpeak keeps your usual processing.";
 
     private MixSettings Custom
     {
