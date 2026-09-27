@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RadioPassthrough.Core/RadioPassthrough.Core.csproj" />
+    <Project Path="src/RadioPassthrough/RadioPassthrough.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RadioPassthrough.Tests/RadioPassthrough.Tests.csproj" />
+  </Folder>
+</Solution>

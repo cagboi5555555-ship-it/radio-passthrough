@@ -1,0 +1,48 @@
+<Window x:Class="RadioPassthrough.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:c="clr-namespace:RadioPassthrough.Controls"
+        xmlns:v="clr-namespace:RadioPassthrough.Views"
+        xmlns:local="clr-namespace:RadioPassthrough"
+        Title="Radio Passthrough"
+        Width="520" Height="860" MinWidth="440" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Base}"
+        FontFamily="{StaticResource Sans}"
+        TextOptions.TextFormattingMode="Display"
+        UseLayoutRounding="True">
+    <Window.Resources>
+        <local:CheckLevelToBrush x:Key="LevelBrush" />
+        <x:Array x:Key="Tabs" Type="{x:Type sys:String}">
+            <sys:String>Live</sys:String>
+            <sys:String>Test</sys:String>
+            <sys:String>Setup</sys:String>
+        </x:Array>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="28,18,28,6">
+            <TextBlock Text="Radio Passthrough" Style="{StaticResource LargeTitle}" />
+            <StackPanel Orientation="Horizontal" Margin="1,4,0,0">
+                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                         Fill="{Binding StatusLevel, Converter={StaticResource LevelBrush}}" />
+                <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" Margin="8,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+            <c:SegmentedControl Items="{StaticResource Tabs}" SelectedIndex="{Binding SelectedTab}" Margin="0,18,0,2" SegmentHeight="30" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <Grid Margin="28,6,28,32">
+                <v:LivePage DataContext="{Binding Live}" Visibility="{Binding DataContext.IsLive, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Visible}}" />
+                <v:TestPage DataContext="{Binding Test}" Visibility="{Binding DataContext.IsTest, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Visible}}" />
+                <v:SetupPage DataContext="{Binding Setup}" Visibility="{Binding DataContext.IsSetup, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Visible}}" />
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

@@ -1,0 +1,19 @@
+<Application x:Class="RadioPassthrough.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RadioPassthrough"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Slot 0 is swapped between Palette.Dark and Palette.Light by ThemeManager. -->
+                <ResourceDictionary Source="Theme/Palette.Dark.xaml" />
+                <ResourceDictionary Source="Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <local:BoolToVisibility x:Key="Visible" />
+            <local:BoolToVisibility x:Key="Hidden" Invert="True" />
+            <local:NullToVisibility x:Key="NotNull" />
+            <local:Fraction x:Key="Fraction" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

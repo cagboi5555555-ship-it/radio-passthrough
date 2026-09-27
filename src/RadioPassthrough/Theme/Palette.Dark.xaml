@@ -1,0 +1,47 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="BaseColor">#1F1E1D</Color>
+    <Color x:Key="SurfaceColor">#262624</Color>
+    <Color x:Key="RaisedColor">#30302E</Color>
+    <Color x:Key="BorderColor">#3A3936</Color>
+    <Color x:Key="SunkenColor">#1A1918</Color>
+    <Color x:Key="InkColor">#FAF9F5</Color>
+    <Color x:Key="Ink2Color">#B7B5AC</Color>
+    <Color x:Key="Ink3Color">#7C7A72</Color>
+    <Color x:Key="DimColor">#57554F</Color>
+    <Color x:Key="ClayColor">#D97757</Color>
+    <Color x:Key="CriticalColor">#BF4D43</Color>
+    <Color x:Key="CautionColor">#C8A44D</Color>
+    <Color x:Key="SettledColor">#6E8B6A</Color>
+    <Color x:Key="ShadowColor">#000000</Color>
+
+    <SolidColorBrush x:Key="Base" Color="{StaticResource BaseColor}" />
+    <SolidColorBrush x:Key="Surface" Color="{StaticResource SurfaceColor}" />
+    <SolidColorBrush x:Key="Raised" Color="{StaticResource RaisedColor}" />
+    <SolidColorBrush x:Key="Hairline" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="Sunken" Color="{StaticResource SunkenColor}" />
+    <SolidColorBrush x:Key="Ink" Color="{StaticResource InkColor}" />
+    <SolidColorBrush x:Key="Ink2" Color="{StaticResource Ink2Color}" />
+    <SolidColorBrush x:Key="Ink3" Color="{StaticResource Ink3Color}" />
+    <SolidColorBrush x:Key="Dim" Color="{StaticResource DimColor}" />
+    <SolidColorBrush x:Key="Clay" Color="{StaticResource ClayColor}" />
+    <SolidColorBrush x:Key="Critical" Color="{StaticResource CriticalColor}" />
+    <SolidColorBrush x:Key="Caution" Color="{StaticResource CautionColor}" />
+    <SolidColorBrush x:Key="Settled" Color="{StaticResource SettledColor}" />
+
+    <SolidColorBrush x:Key="OnClay" Color="#1F1E1D" />
+    <SolidColorBrush x:Key="ClayHover" Color="#E08667" />
+    <SolidColorBrush x:Key="ClayPressed" Color="#C96A4B" />
+    <SolidColorBrush x:Key="RaisedHover" Color="#383835" />
+    <SolidColorBrush x:Key="RowHover" Color="#2B2B29" />
+    <SolidColorBrush x:Key="SwitchOnTrack" Color="#FAF9F5" />
+    <SolidColorBrush x:Key="SwitchOnKnob" Color="#1F1E1D" />
+    <SolidColorBrush x:Key="SwitchOffKnob" Color="#B7B5AC" />
+    <SolidColorBrush x:Key="SliderThumb" Color="#FAF9F5" />
+    <SolidColorBrush x:Key="MeterFill" Color="#B7B5AC" />
+    <SolidColorBrush x:Key="MeterFillStrong" Color="#FAF9F5" />
+    <SolidColorBrush x:Key="WaveBar" Color="#7C7A72" />
+    <SolidColorBrush x:Key="WaveBand" Color="#30302E" />
+    <SolidColorBrush x:Key="ScrollThumb" Color="#57554F" />
+    <sys:Double x:Key="ShadowOpacity" xmlns:sys="clr-namespace:System;assembly=System.Runtime">0.45</sys:Double>
+</ResourceDictionary>
