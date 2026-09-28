@@ -1,16 +1,10 @@
 <UserControl x:Class="RadioPassthrough.Views.SetupPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
              xmlns:c="clr-namespace:RadioPassthrough.Controls"
              xmlns:local="clr-namespace:RadioPassthrough">
     <UserControl.Resources>
         <local:CheckLevelToBrush x:Key="LevelBrush" />
-        <x:Array x:Key="Channels" Type="{x:Type sys:String}">
-            <sys:String>Auto</sys:String>
-            <sys:String>Input 1</sys:String>
-            <sys:String>Input 2</sys:String>
-        </x:Array>
     </UserControl.Resources>
 
     <StackPanel>
@@ -98,15 +92,10 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </Grid>
-                <Border Style="{StaticResource Divider}" />
-                <Grid Style="{StaticResource Row}">
-                    <TextBlock Text="Channels" Style="{StaticResource RowLabel}" />
-                    <c:SegmentedControl Items="{StaticResource Channels}" SelectedIndex="{Binding MicChannelIndex}" Width="228" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                </Grid>
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="Auto uses the inputs your mic is actually plugged into, so a mic on one input of a two-input interface isn't halved." />
+                   Text="Your normal microphone, like Voicemeeter's Stereo Input 1. Its inputs are passed on in stereo, as Voicemeeter did." />
 
         <TextBlock Text="Windows" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">

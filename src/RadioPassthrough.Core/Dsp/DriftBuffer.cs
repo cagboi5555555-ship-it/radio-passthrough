@@ -2,16 +2,18 @@ namespace RadioPassthrough.Core.Dsp;
 
 // Carries audio from a capture clock to the output clock. The two devices never run at exactly the
 // same rate, so instead of dropping or repeating samples (audible clicks) the read side resamples by
-// a tiny ratio (at most ±0.4 %) that keeps the fill level near its target.
+// a tiny ratio (at most ±0.4 %) that keeps the fill level near its target. Audio is interleaved; all
+// channels share one read position, so left and right always stay exactly aligned.
 public sealed class DriftBuffer
 {
-    private const int Capacity = 1 << 16;
+    private const int Capacity = 1 << 16; // frames
     private const int Mask = Capacity - 1;
     private const double MaxRatioOffset = 0.004;
     private const double ControlGain = 0.004;
     private const double ErrorSmoothing = 0.02;
 
-    private readonly float[] _ring = new float[Capacity];
+    private readonly int _channels;
+    private readonly float[] _ring;
     private readonly object _lock = new();
     private readonly int _target;
     private long _written;
@@ -20,28 +22,40 @@ public sealed class DriftBuffer
     private double _smoothedError;
     private bool _primed;
 
-    public DriftBuffer(int targetSamples)
+    public DriftBuffer(int targetFrames, int channels = 1)
     {
-        if (targetSamples <= 0 || targetSamples > Capacity / 8)
-            throw new ArgumentOutOfRangeException(nameof(targetSamples));
-        _target = targetSamples;
+        if (targetFrames <= 0 || targetFrames > Capacity / 8)
+            throw new ArgumentOutOfRangeException(nameof(targetFrames));
+        if (channels < 1) throw new ArgumentOutOfRangeException(nameof(channels));
+        _target = targetFrames;
+        _channels = channels;
+        _ring = new float[Capacity * channels];
     }
+
+    public int Channels => _channels;
 
     public double Ratio { get; private set; } = 1.0;
 
     public int Underruns { get; private set; }
 
+    // In frames.
     public double Fill
     {
         get { lock (_lock) return _written - _readIndex - _frac; }
     }
 
-    public void Write(ReadOnlySpan<float> samples)
+    public void Write(ReadOnlySpan<float> interleaved)
     {
+        int frames = interleaved.Length / _channels;
         lock (_lock)
         {
-            foreach (float s in samples)
-                _ring[(_written++) & Mask] = s;
+            for (int f = 0; f < frames; f++)
+            {
+                int slot = (int)(_written & Mask) * _channels;
+                for (int c = 0; c < _channels; c++)
+                    _ring[slot + c] = interleaved[f * _channels + c];
+                _written++;
+            }
 
             if (_written - _readIndex > Capacity - 8)
                 JumpToTarget();
@@ -51,6 +65,7 @@ public sealed class DriftBuffer
     // Always fills the whole destination; returns how many samples came from real data.
     public int Read(Span<float> destination)
     {
+        int frames = destination.Length / _channels;
         lock (_lock)
         {
             double fill = _written - _readIndex - _frac;
@@ -64,7 +79,7 @@ public sealed class DriftBuffer
                 _primed = true;
             }
 
-            if (fill > _target * 4 + destination.Length)
+            if (fill > _target * 4 + frames)
             {
                 JumpToTarget();
                 fill = _written - _readIndex - _frac;
@@ -74,17 +89,19 @@ public sealed class DriftBuffer
             _smoothedError += ErrorSmoothing * (error - _smoothedError);
             Ratio = 1.0 + Math.Clamp(_smoothedError * ControlGain, -MaxRatioOffset, MaxRatioOffset);
 
-            for (int i = 0; i < destination.Length; i++)
+            for (int i = 0; i < frames; i++)
             {
                 if (_readIndex + 2 >= _written)
                 {
-                    destination[i..].Clear();
+                    destination[(i * _channels)..].Clear();
                     _primed = false;
                     Underruns++;
-                    return i;
+                    return i * _channels;
                 }
 
-                destination[i] = Hermite(At(_readIndex - 1), At(_readIndex), At(_readIndex + 1), At(_readIndex + 2), (float)_frac);
+                float t = (float)_frac;
+                for (int c = 0; c < _channels; c++)
+                    destination[i * _channels + c] = Hermite(At(_readIndex - 1, c), At(_readIndex, c), At(_readIndex + 1, c), At(_readIndex + 2, c), t);
                 _frac += Ratio;
                 while (_frac >= 1.0)
                 {
@@ -92,7 +109,7 @@ public sealed class DriftBuffer
                     _readIndex++;
                 }
             }
-            return destination.Length;
+            return frames * _channels;
         }
     }
 
@@ -115,7 +132,7 @@ public sealed class DriftBuffer
         _smoothedError = 0;
     }
 
-    private float At(long index) => index < 0 ? 0f : _ring[index & Mask];
+    private float At(long index, int channel) => index < 0 ? 0f : _ring[(int)(index & Mask) * _channels + channel];
 
     private static float Hermite(float xm1, float x0, float x1, float x2, float t)
     {

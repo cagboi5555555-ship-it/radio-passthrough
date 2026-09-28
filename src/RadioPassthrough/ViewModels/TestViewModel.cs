@@ -211,7 +211,7 @@ public sealed class TestViewModel : ObservableObject
         }
 
         var take = recorder.ToTake();
-        if (take.Length < Mixer.SampleRate / 2) return;
+        if (take.Length < Mixer.SampleRate / 2 * Mixer.Channels) return;
         _take = take;
         _cableClip = cable;
         HasTake = true;
@@ -223,7 +223,8 @@ public sealed class TestViewModel : ObservableObject
     {
         if (_take is not { } take) return;
         var rendered = take.Render();
-        WaveSamples = rendered;
+        var mono = Take.ToMono(rendered);
+        WaveSamples = mono;
 
         var analysis = TakeAnalysis.Of(rendered);
         PeakText = $"Peak {Db(analysis.PeakDb)}";
@@ -233,7 +234,7 @@ public sealed class TestViewModel : ObservableObject
 
         bool pure = rendered.AsSpan().SequenceEqual(take.PlainSum());
         Checks.Add(pure
-            ? new ResultCheck("Doc 1:1 is exactly your voice plus the game, nothing added.", CheckLevel.Ok)
+            ? new ResultCheck("Exactly your voice plus the game, nothing added (Doc 1:1).", CheckLevel.Ok)
             : new ResultCheck("Doc 1:1 differs from a plain sum. Please report this.", CheckLevel.Attention));
 
         bool anyRadio = take.Gate.Any(g => g);
@@ -267,7 +268,7 @@ public sealed class TestViewModel : ObservableObject
         }
         else
         {
-            var sent = TakeAnalysis.Of(rendered);
+            var sent = TakeAnalysis.Of(mono); // the cable recording is averaged the same way
             var received = TakeAnalysis.Of(_cableClip);
             double diff = received.LoudnessDb - sent.LoudnessDb;
             Checks.Add(Math.Abs(diff) <= 1.5 || sent.LoudnessDb <= Core.Dsp.Db.Floor + 1
@@ -290,6 +291,7 @@ public sealed class TestViewModel : ObservableObject
 
         var preview = _app.Settings.Preview;
         float[]? clip;
+        int channels = 1;
         if (teamSpeakClip)
         {
             if (_tsClip is not { } ts) return;
@@ -300,16 +302,19 @@ public sealed class TestViewModel : ObservableObject
         {
             if (_take is not { } take) return;
             bool teammate = IsTeammate;
+            // What TeamSpeak gets: exactly what went into the cable, in stereo. The teammate preview is mono,
+            // as TeamSpeak sends it.
+            channels = teammate ? 1 : Mixer.Channels;
             clip = await Task.Run(() =>
             {
                 var rendered = take.Render();
-                return teammate ? RadioPreview.AsTeammateHears(rendered, preview) : rendered;
+                return teammate ? RadioPreview.AsTeammateHears(Take.ToMono(rendered), preview) : rendered;
             });
         }
 
         try
         {
-            await _player.PlayAsync(clip);
+            await _player.PlayAsync(clip, channels);
             PlayMessage = null;
         }
         catch (Exception e)

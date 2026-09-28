@@ -114,25 +114,6 @@ public sealed class LiveViewModel : ObservableObject
         }
     }
 
-    // Background noise: how far the mic is turned down between words (0 = off).
-
-    public double NoiseReduction
-    {
-        get => _app.Settings.NoiseReductionDb;
-        set
-        {
-            float db = (float)Math.Round(Math.Clamp(value, 0, NoiseGate.MaxReductionDb));
-            if (db == _app.Settings.NoiseReductionDb) return;
-            _app.Settings.NoiseReductionDb = db;
-            _app.Engine.NoiseReductionDb = db;
-            _app.ScheduleSave();
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(NoiseReductionText));
-        }
-    }
-
-    public string NoiseReductionText => _app.Settings.NoiseReductionDb <= 0 ? "Off" : $"−{_app.Settings.NoiseReductionDb:0} dB";
-
     // Radio keys
 
     public ObservableCollection<KeyBindingItem> Bindings { get; } = new();

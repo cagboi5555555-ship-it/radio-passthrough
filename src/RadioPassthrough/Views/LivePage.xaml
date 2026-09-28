@@ -82,7 +82,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Sound: the guide's mix (Doc 1:1), plus how much of your mic's background noise to cut -->
+        <!-- Sound: the guide's mix (Doc 1:1) -->
         <TextBlock Text="Sound" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">
             <StackPanel>
@@ -95,22 +95,10 @@
                     <TextBlock Text="Mix" Style="{StaticResource RowLabel}" />
                     <TextBlock Text="Doc 1:1" Style="{StaticResource RowLabel}" Foreground="{DynamicResource Ink2}" HorizontalAlignment="Right" />
                 </Grid>
-                <Border Style="{StaticResource Divider}" />
-                <Grid Style="{StaticResource Row}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="62" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Background noise" Style="{StaticResource RowLabel}" />
-                    <Slider Grid.Column="1" Style="{StaticResource Slider}" Minimum="0" Maximum="40" Value="{Binding NoiseReduction}"
-                            SmallChange="5" LargeChange="10" IsSnapToTickEnabled="True" TickFrequency="5" AutomationProperties.Name="Background noise reduction" />
-                    <TextBlock Grid.Column="2" Text="{Binding NoiseReductionText}" Style="{StaticResource Number}" HorizontalAlignment="Right" />
-                </Grid>
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="Doc 1:1: your voice plus the game, nothing added, the same as the Voicemeeter setup. Background noise turns your mic down between words so fan and room noise doesn't become radio hiss. The game is never touched." />
+                   Text="Exactly the guide's Voicemeeter routing: your mic and Arma's sound, in stereo at full level, summed while you hold a radio key. Nothing is added or filtered." />
 
         <!-- Radio keys -->
         <TextBlock Text="Radio keys" Style="{StaticResource SectionHeader}" />

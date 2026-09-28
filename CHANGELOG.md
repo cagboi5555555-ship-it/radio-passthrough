@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+**Exactly the guide's Voicemeeter setup**
+- Stereo straight through, like Voicemeeter's bus B1: your mic's inputs on left and right, Arma's left and right on top while you hold a radio key, all at full level. The app no longer mixes anything down to mono; TeamSpeak does that itself, exactly as it did with Voicemeeter.
+- Removed the mic noise gate and its slider. Nothing filters or turns down your mic.
+- Removed the mic Channels setting; it isn't needed with stereo straight through.
+- Verified end to end on a real PC: with the radio key held the game arrives on both sides at exactly its own level; released, it's gone completely; your mic passes untouched; no dropouts.
+- Diagnostics now report audio dropouts, if there ever are any.
+
 ## 1.4.1
 
 - Background noise reduction works from the moment the app starts. The mic's first instant of pure silence was taken as your room's noise level, so the gate stayed open for about 20 seconds after every start (and after brief audio dropouts).

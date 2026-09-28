@@ -9,7 +9,7 @@ Arma 3's own sound ── radio key held ─┴─► mix ─► VB-CABLE ─►
 
 - Direct speech stays voice only. Game sound is added **only while you hold a radio key** in Arma (ACRE2 defaults: Caps Lock, and Shift, Ctrl or Alt + Caps Lock).
 - Your headset keeps playing Arma and TeamSpeak exactly as before. Nothing gets rerouted.
-- The default **Doc 1:1** mix is plain voice plus game with nothing added. Your mic's background noise (fans, hum) is gated out between words so ACRE's radio effect doesn't turn it into hiss; game audio is never touched.
+- The mix is the guide's Voicemeeter bus B1, exactly: your mic and Arma's sound in stereo at full level, summed. Nothing is added, filtered or mixed down; TeamSpeak gets the same signal it got from Voicemeeter.
 - **Radio Passthrough never connects to the internet.** It contains no networking code at all. See [What it does on your PC](#what-it-does-on-your-pc).
 
 <p align="center">
@@ -40,14 +40,13 @@ On the **Test** tab:
 
 1. Play a video with gunfire in your browser and pick it under *Take it from*.
 2. Press **Record 10 seconds**. Talk, then hold your radio key (or *Hold here to talk on the radio*) and keep talking.
-3. Play it back as **What TeamSpeak gets**, or as **What a teammate hears**. The second one uses TeamSpeak's Opus codec plus ACRE2's own radio filter, noise and distortion.
+3. Play it back as **What TeamSpeak gets** (exactly what went into the cable), or as **What a teammate hears**, a preview of the radio effect your teammates' ACRE2 adds on their side. The app never adds that to what you send.
 
 Nothing on the Test tab changes your settings.
 
 ## Everyday controls
 
 - **Live tab:** see when you're on the radio and your levels. Switch *Send game audio over radio* off to go voice-only.
-- **Background noise:** how far your mic is turned down between words (Off to −40 dB, default −30 dB), so fan and room noise doesn't turn into hiss on the radio. The mix itself is always Doc 1:1.
 - **Radio keys:** add or remove keys (mouse side buttons work) if you changed ACRE's keybinds. With TFAR, add your TFAR radio keys. The mix works the same; only the Test tab's radio preview is ACRE-specific.
 - **Tray menu:** open the app, switch game audio on or off, or quit.
 
@@ -60,7 +59,6 @@ Nothing on the Test tab changes your settings.
 | Setup says Arma runs as administrator | Click **Restart as admin**, or stop running Arma as admin. |
 | My speakers or mic switched to "CABLE" | The app switches them back by itself (Setup → *Keep my speakers and mic as the defaults*). |
 | Game too loud or quiet on the radio | Change Arma's own volume, as with the Voicemeeter setup. Test it on the Test tab. |
-| Teammates hear hiss behind my voice | Live → *Background noise*: move it further right. |
 | My antivirus complains | Unsigned new files sometimes get flagged. [Check your download is the genuine build](SECURITY.md#verifying-a-download), or build it yourself from this source (below). |
 | Still stuck | Setup → **Copy diagnostics**, then paste it where you ask for help. Your Windows user name is removed from it. |
 

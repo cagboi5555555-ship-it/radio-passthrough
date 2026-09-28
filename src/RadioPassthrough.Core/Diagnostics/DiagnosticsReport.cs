@@ -12,7 +12,7 @@ namespace RadioPassthrough.Core.Diagnostics;
 // never audio or anything typed.
 public static class DiagnosticsReport
 {
-    public static string Build(AppSettings settings, EngineStatus engine, TeamSpeakState? teamSpeak, IReadOnlyList<Check> checks, GameProcess? arma)
+    public static string Build(AppSettings settings, EngineStatus engine, TeamSpeakState? teamSpeak, IReadOnlyList<Check> checks, GameProcess? arma, (int Mic, int Game)? dropouts = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Radio Passthrough {AppInfo.Version.ToString(3)} diagnostics, {DateTime.Now:yyyy-MM-dd HH:mm}");
@@ -28,10 +28,11 @@ public static class DiagnosticsReport
         sb.AppendLine($"  cable: {engine.CableFound}, mic: {engine.MicName ?? "none"}, game: {(engine.GameAttached ? engine.GameName : "not attached")}");
         if (engine.Problem is not null) sb.AppendLine($"  problem: {engine.Problem}");
         sb.AppendLine($"  Arma: {(arma is null ? "not running" : $"pid {arma.Pid}, admin: {arma.Elevated}")}");
+        if (dropouts is { } d) sb.AppendLine($"  audio dropouts since start: mic {d.Mic}, game {d.Game}");
         sb.AppendLine();
 
         sb.AppendLine("Settings");
-        sb.AppendLine($"  game audio on: {settings.GameAudioEnabled}, mic channels: {settings.MicChannels}, background noise reduction: {settings.NoiseReductionDb:0} dB");
+        sb.AppendLine($"  game audio on: {settings.GameAudioEnabled}");
         sb.AppendLine($"  radio keys: {string.Join(", ", settings.Bindings.Select(KeyNames.Describe))}");
         sb.AppendLine($"  keep real defaults: {settings.KeepRealDefaults}, hide unused cable devices: {settings.HideUnusedCableDevices}");
         sb.AppendLine();

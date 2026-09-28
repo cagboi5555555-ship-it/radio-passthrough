@@ -100,14 +100,15 @@ public sealed class InstallationTests : IDisposable
     }
 
     [Fact]
-    public void Settings_from_version_1_load_with_new_defaults()
+    public void Settings_from_older_versions_still_load()
     {
+        // Settings that no longer exist (mix presets, mic channels, noise gate) are simply ignored.
         var store = new SettingsStore(Path.Combine(_root, "settings1"));
         Directory.CreateDirectory(store.Directory);
-        File.WriteAllText(store.FilePath, """{ "MicChannels": "First", "Preset": "Custom", "FirstRunDone": true }""");
+        File.WriteAllText(store.FilePath, """{ "MicChannels": "First", "Preset": "Custom", "MicNoiseGate": true, "NoiseReductionDb": 30, "GameAudioEnabled": false, "FirstRunDone": true }""");
         var settings = store.Load();
-        Assert.Equal(Core.Dsp.MicChannelMode.First, settings.MicChannels);
-        Assert.True(settings.GameAudioEnabled);
+        Assert.False(settings.GameAudioEnabled);
+        Assert.True(settings.FirstRunDone);
         Assert.True(settings.KeepRealDefaults);
         Assert.Equal(4, settings.Bindings.Count);
     }

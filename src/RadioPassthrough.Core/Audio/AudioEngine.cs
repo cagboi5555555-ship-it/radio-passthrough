@@ -18,19 +18,16 @@ public sealed record EngineStatus
     public string? Problem { get; init; }
 }
 
-// Mic + game audio → mixer → VB-CABLE, with everything re-opened automatically when devices or
-// the game come and go.
+// Mic + game audio → mixer → VB-CABLE in stereo, like the guide's Voicemeeter bus B1, with everything
+// re-opened automatically when devices or the game come and go.
 public sealed class AudioEngine : IAsyncDisposable
 {
-    public const int BlockSize = 480;
+    public const int BlockSize = 480; // frames
 
     private readonly SemaphoreSlim _ops = new(1, 1);
     private readonly Mixer _mixer = new();
-    private readonly NoiseGate _micGate = new();
-    private readonly MicDownmix _micDownmix = new();
-    private volatile bool _micGateReset;
-    private readonly DriftBuffer _micBuffer = new(960);
-    private readonly DriftBuffer _gameBuffer = new(1440);
+    private readonly DriftBuffer _micBuffer = new(960, Mixer.Channels);
+    private readonly DriftBuffer _gameBuffer = new(1440, Mixer.Channels);
     private readonly MixProvider _provider;
     private readonly MMDeviceEnumerator _enumerator = new();
     private readonly MMDeviceNotificationClient _notifications;
@@ -42,8 +39,8 @@ public sealed class AudioEngine : IAsyncDisposable
     private string? _micDeviceId;
     private CaptureSource? _game;
     private int _gamePid;
-    private float[] _micMono = new float[4096];
-    private float[] _gameMono = new float[4096];
+    private float[] _micStereo = new float[8192];
+    private float[] _gameStereo = new float[8192];
 
     private string? _wantedMicId;
     private GameProcess? _arma;
@@ -70,20 +67,15 @@ public sealed class AudioEngine : IAsyncDisposable
     // Master switch: off means mic only, as if the app weren't adding anything.
     public bool GameAudioEnabled { get; set; } = true;
 
-    // How far the mic is turned down between words so its background noise isn't sent; 0 = off.
-    // Mic only: game audio never goes through it.
-    public float NoiseReductionDb
-    {
-        get => _micGate.ReductionDb;
-        set => _micGate.ReductionDb = value;
-    }
-
     // While a test runs the radio key always works, even with game audio switched off.
     public bool TestActive { get; set; }
 
     public bool GateOpen => _latch || (_radioKey && (GameAudioEnabled || TestActive));
 
     public bool RadioKeyHeld => _radioKey;
+
+    // How often the mic or game buffer ran dry (each one is an audible gap). For diagnostics.
+    public (int Mic, int Game) Dropouts => (_micBuffer.Underruns, _gameBuffer.Underruns);
 
     public EngineStatus Status => Volatile.Read(ref _status);
 
@@ -98,12 +90,6 @@ public sealed class AudioEngine : IAsyncDisposable
     public void SetRadioKey(bool held) => _radioKey = held;
 
     public void SetLatch(bool on) => _latch = on;
-
-    public MicChannelMode MicMode
-    {
-        get => _micDownmix.Mode;
-        set => _micDownmix.Mode = value;
-    }
 
     public Task SetMicAsync(string? deviceId)
     {
@@ -212,7 +198,6 @@ public sealed class AudioEngine : IAsyncDisposable
         try
         {
             _micBuffer.Reset();
-            _micDownmix.Reset();
             var mic = await CaptureSource.OpenDeviceAsync(wanted, OnMicData).ConfigureAwait(false);
             mic.Faulted += _ => OnFault(Part.Mic, mic);
             _mic = mic;
@@ -296,7 +281,6 @@ public sealed class AudioEngine : IAsyncDisposable
         _micDeviceId = null;
         if (mic is not null) await mic.DisposeAsync().ConfigureAwait(false);
         _micBuffer.Reset();
-        _micGateReset = true; // the audio thread resets it before its next block
     }
 
     private async Task CloseGameAsync()
@@ -332,20 +316,30 @@ public sealed class AudioEngine : IAsyncDisposable
         StatusChanged?.Invoke(status);
     }
 
-    private void OnMicData(ReadOnlySpan<float> interleaved, int channels, bool silent)
-    {
-        int frames = interleaved.Length / channels;
-        if (_micMono.Length < frames) _micMono = new float[frames * 2];
-        _micDownmix.Process(interleaved, channels, _micMono);
-        _micBuffer.Write(_micMono.AsSpan(0, frames));
-    }
+    // Voicemeeter's stereo input strip: the device's first two channels as left and right (a one-channel
+    // device on both). Nothing is mixed down here; TeamSpeak does that itself, as it did with B1.
+    private void OnMicData(ReadOnlySpan<float> interleaved, int channels, bool silent) =>
+        ToStereo(interleaved, channels, ref _micStereo, _micBuffer);
 
-    private void OnGameData(ReadOnlySpan<float> interleaved, int channels, bool silent)
+    private void OnGameData(ReadOnlySpan<float> interleaved, int channels, bool silent) =>
+        ToStereo(interleaved, channels, ref _gameStereo, _gameBuffer);
+
+    private static void ToStereo(ReadOnlySpan<float> interleaved, int channels, ref float[] scratch, DriftBuffer buffer)
     {
         int frames = interleaved.Length / channels;
-        if (_gameMono.Length < frames) _gameMono = new float[frames * 2];
-        Downmix.ToMono(interleaved, channels, _gameMono);
-        _gameBuffer.Write(_gameMono.AsSpan(0, frames));
+        if (channels == 2)
+        {
+            buffer.Write(interleaved[..(frames * 2)]);
+            return;
+        }
+        if (scratch.Length < frames * 2) scratch = new float[frames * 4];
+        for (int f = 0; f < frames; f++)
+        {
+            float left = interleaved[f * channels];
+            scratch[f * 2] = left;
+            scratch[f * 2 + 1] = channels > 1 ? interleaved[f * channels + 1] : left;
+        }
+        buffer.Write(scratch.AsSpan(0, frames * 2));
     }
 
     public async ValueTask DisposeAsync()
@@ -370,11 +364,11 @@ public sealed class AudioEngine : IAsyncDisposable
 
     private sealed class MixProvider(AudioEngine engine) : IWaveProvider
     {
-        private readonly float[] _mic = new float[BlockSize];
-        private readonly float[] _game = new float[BlockSize];
-        private readonly float[] _mono = new float[BlockSize];
+        private const int BlockSamples = BlockSize * Mixer.Channels;
+        private readonly float[] _mic = new float[BlockSamples];
+        private readonly float[] _game = new float[BlockSamples];
 
-        public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(CaptureSource.SampleRate, 2);
+        public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(CaptureSource.SampleRate, Mixer.Channels);
 
         private bool _loggedFailure;
 
@@ -394,38 +388,27 @@ public sealed class AudioEngine : IAsyncDisposable
             }
         }
 
+        // Interleaved stereo straight through: output = mic + game (while a radio key is held).
         private int Mix(Span<byte> buffer)
         {
             var output = MemoryMarshal.Cast<byte, float>(buffer);
-            int frames = output.Length / 2;
-            for (int done = 0; done < frames;)
+            int samples = output.Length - output.Length % Mixer.Channels;
+            for (int done = 0; done < samples;)
             {
-                int n = Math.Min(BlockSize, frames - done);
+                int n = Math.Min(BlockSamples, samples - done);
                 var mic = _mic.AsSpan(0, n);
                 var game = _game.AsSpan(0, n);
-                var mono = _mono.AsSpan(0, n);
 
                 engine._micBuffer.Read(mic);
-                if (engine._micGateReset)
-                {
-                    engine._micGateReset = false;
-                    engine._micGate.Reset();
-                }
-                engine._micGate.Process(mic);
                 if (engine._gameActive) engine._gameBuffer.Read(game);
                 else game.Clear();
 
                 bool gate = engine.GateOpen;
-                engine._mixer.Process(mic, game, gate, mono);
+                engine._mixer.Process(mic, game, gate, output.Slice(done, n));
                 engine.Recorder?.Append(mic, game, gate);
-
-                for (int i = 0; i < n; i++)
-                {
-                    output[(done + i) * 2] = mono[i];
-                    output[(done + i) * 2 + 1] = mono[i];
-                }
                 done += n;
             }
+            output[samples..].Clear();
             return buffer.Length;
         }
     }

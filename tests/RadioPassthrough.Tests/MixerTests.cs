@@ -4,17 +4,27 @@ namespace RadioPassthrough.Tests;
 
 public class MixerTests
 {
-    private static float[] Sine(int length, float freq, float amp, int phaseOffset = 0) =>
-        Enumerable.Range(phaseOffset, length).Select(i => amp * MathF.Sin(2 * MathF.PI * freq * i / Mixer.SampleRate)).ToArray();
+    private static float[] Sine(int frames, float freq, float amp, int phaseOffset = 0) =>
+        Enumerable.Range(phaseOffset, frames).Select(i => amp * MathF.Sin(2 * MathF.PI * freq * i / Mixer.SampleRate)).ToArray();
 
-    private static Take MakeTake(bool[] gate, int blockSize = 480)
+    private static float[] Stereo(float[] left, float[] right)
     {
-        int length = gate.Length * blockSize;
-        return new Take(Sine(length, 220, 0.3f), Sine(length, 1300, 0.6f, 17), gate, blockSize);
+        var x = new float[left.Length * 2];
+        for (int i = 0; i < left.Length; i++) { x[i * 2] = left[i]; x[i * 2 + 1] = right[i]; }
+        return x;
+    }
+
+    // A mic on the left input only (like a mic on input 1 of a two-input interface), stereo game.
+    private static Take MakeTake(bool[] gate, int frames = 480)
+    {
+        int length = gate.Length * frames;
+        var mic = Stereo(Sine(length, 220, 0.3f), new float[length]);
+        var game = Stereo(Sine(length, 1300, 0.6f, 17), Sine(length, 700, 0.4f));
+        return new Take(mic, game, gate, frames * Mixer.Channels);
     }
 
     [Fact]
-    public void DocOneToOne_is_exactly_mic_plus_gated_game()
+    public void Output_is_exactly_mic_plus_gated_game_per_channel()
     {
         var gate = Enumerable.Range(0, 200).Select(b => b % 50 is >= 10 and < 35).ToArray();
         var take = MakeTake(gate);
@@ -28,21 +38,34 @@ public class MixerTests
     }
 
     [Fact]
+    public void With_the_radio_key_held_the_game_is_added_at_full_level_on_both_sides()
+    {
+        var take = MakeTake(Enumerable.Repeat(true, 20).ToArray());
+        var rendered = take.Render();
+        // After the 10 ms fade: left = mic + game left, right = game right, untouched.
+        for (int i = 480 * 2; i < rendered.Length; i += 2)
+        {
+            Assert.Equal(take.Mic[i] + take.Game[i], rendered[i]);
+            Assert.Equal(take.Game[i + 1], rendered[i + 1]);
+        }
+    }
+
+    [Fact]
     public void Recorded_take_replays_exactly_what_was_sent_live()
     {
         // The audio device asks for uneven chunks; the recording must keep them so a re-render matches
         // the live output sample for sample.
         var live = new Mixer();
         var recorder = new TakeRecorder(TimeSpan.FromSeconds(2));
-        int[] sizes = [480, 480, 96, 480, 384, 441, 480, 17, 480];
-        var mic = Sine(96000, 250, 0.5f);
-        var game = Sine(96000, 1700, 0.9f, 5);
+        int[] frameSizes = [480, 480, 96, 480, 384, 441, 480, 17, 480];
+        var mic = Stereo(Sine(96000, 250, 0.5f), Sine(96000, 260, 0.1f));
+        var game = Stereo(Sine(96000, 1700, 0.9f, 5), Sine(96000, 900, 0.7f));
         var sent = new List<float>();
 
         int offset = 0;
         for (int c = 0; offset < mic.Length; c++)
         {
-            int n = Math.Min(sizes[c % sizes.Length], mic.Length - offset);
+            int n = Math.Min(frameSizes[c % frameSizes.Length] * 2, mic.Length - offset);
             bool radio = c % 23 is >= 4 and < 15;
             var output = new float[n];
             live.Process(mic.AsSpan(offset, n), game.AsSpan(offset, n), radio, output);
@@ -70,22 +93,22 @@ public class MixerTests
     public void Gate_ramps_without_jumps()
     {
         var mixer = new Mixer();
-        var silence = new float[480];
-        var ones = Enumerable.Repeat(1f, 480).ToArray();
-        var output = new float[480];
-        var all = new List<float>();
+        var silence = new float[960];
+        var ones = Enumerable.Repeat(1f, 960).ToArray();
+        var output = new float[960];
+        var left = new List<float>();
         for (int b = 0; b < 6; b++)
         {
             mixer.Process(silence, ones, gateOpen: b is >= 1 and < 4, output);
-            all.AddRange(output);
+            for (int i = 0; i < output.Length; i += 2) left.Add(output[i]);
         }
 
         float maxStep = 0;
-        for (int i = 1; i < all.Count; i++)
-            maxStep = MathF.Max(maxStep, MathF.Abs(all[i] - all[i - 1]));
+        for (int i = 1; i < left.Count; i++)
+            maxStep = MathF.Max(maxStep, MathF.Abs(left[i] - left[i - 1]));
 
         Assert.True(maxStep <= 1f / 470, $"step {maxStep}");
-        Assert.Equal(1f, all[480 * 3 - 1], 3);
-        Assert.Equal(0f, all[^1], 3);
+        Assert.Equal(1f, left[480 * 3 - 1], 3);
+        Assert.Equal(0f, left[^1], 3);
     }
 }

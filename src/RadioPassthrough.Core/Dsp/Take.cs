@@ -1,7 +1,8 @@
 namespace RadioPassthrough.Core.Dsp;
 
-// One test recording kept as separate stems (mic, game) plus the exact chunks the live mixer processed
-// and whether the radio key was held for each. Rendering it reproduces what was sent, sample for sample.
+// One test recording kept as separate stems (mic, game; interleaved stereo like everything the mixer
+// handles) plus the exact chunks the live mixer processed and whether the radio key was held for each.
+// Rendering it reproduces what was sent, sample for sample.
 public sealed class Take
 {
     // Evenly sized blocks: `gate` has one entry per block of `blockSize` samples (the last may be shorter).
@@ -13,6 +14,8 @@ public sealed class Take
     public Take(float[] mic, float[] game, int[] chunkLengths, bool[] gate)
     {
         if (game.Length != mic.Length) throw new ArgumentException("Mic and game must be the same length.");
+        if (mic.Length % Mixer.Channels != 0 || chunkLengths.Any(c => c % Mixer.Channels != 0))
+            throw new ArgumentException("Audio must be whole stereo frames.");
         if (chunkLengths.Length != gate.Length) throw new ArgumentException("One radio key state is needed per chunk.");
         if (chunkLengths.Sum() != mic.Length) throw new ArgumentException("Chunks must cover the whole take.");
         Mic = mic;
@@ -25,7 +28,7 @@ public sealed class Take
     public float[] Game { get; }
     public int[] ChunkLengths { get; }
     public bool[] Gate { get; } // one entry per chunk
-    public int Length => Mic.Length;
+    public int Length => Mic.Length; // samples, interleaved
 
     public IEnumerable<(int Offset, int Length, bool Radio)> Chunks()
     {
@@ -42,6 +45,7 @@ public sealed class Take
         return output;
     }
 
+    // The same sum written out by hand, to prove the mixer adds nothing.
     public float[] PlainSum()
     {
         var output = new float[Length];
@@ -50,10 +54,11 @@ public sealed class Take
         foreach (var (offset, n, radio) in Chunks())
         {
             float target = radio ? 1f : 0f;
-            for (int i = offset; i < offset + n; i++)
+            for (int i = offset; i < offset + n; i += Mixer.Channels)
             {
                 gate = gate < target ? MathF.Min(target, gate + step) : MathF.Max(target, gate - step);
-                output[i] = Mic[i] + Game[i] * gate;
+                for (int c = 0; c < Mixer.Channels; c++)
+                    output[i + c] = Mic[i + c] + Game[i + c] * gate;
             }
         }
         return output;
@@ -76,6 +81,15 @@ public sealed class Take
         return spans;
     }
 
+    // Average of left and right, for the waveform and the teammate preview (TeamSpeak sends mono).
+    public static float[] ToMono(float[] stereo)
+    {
+        var mono = new float[stereo.Length / Mixer.Channels];
+        for (int f = 0; f < mono.Length; f++)
+            mono[f] = 0.5f * (stereo[f * 2] + stereo[f * 2 + 1]);
+        return mono;
+    }
+
     private static int[] EvenChunks(int length, int blockSize)
     {
         if (blockSize <= 0) throw new ArgumentOutOfRangeException(nameof(blockSize));
@@ -96,7 +110,7 @@ public sealed class TakeRecorder
 
     public TakeRecorder(TimeSpan duration)
     {
-        int length = (int)(duration.TotalSeconds * Mixer.SampleRate);
+        int length = (int)(duration.TotalSeconds * Mixer.SampleRate) * Mixer.Channels;
         _mic = new float[length];
         _game = new float[length];
     }
@@ -117,6 +131,7 @@ public sealed class TakeRecorder
         lock (_lock)
         {
             int n = Math.Min(mic.Length, _mic.Length - _position);
+            n -= n % Mixer.Channels;
             if (n <= 0) return;
             mic[..n].CopyTo(_mic.AsSpan(_position));
             game[..n].CopyTo(_game.AsSpan(_position));

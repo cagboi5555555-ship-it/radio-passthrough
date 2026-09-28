@@ -16,8 +16,6 @@ public sealed class AppSettings
     public Dictionary<string, string> RememberedDefaults { get; set; } = new();
     public bool TrayHintShown { get; set; }
     public string? MicDeviceId { get; set; }
-    public MicChannelMode MicChannels { get; set; } = MicChannelMode.Auto;
-    public float NoiseReductionDb { get; set; } = NoiseGate.DefaultReductionDb;
     public List<PttBinding> Bindings { get; set; } = PttBinding.AcreDefaults();
     public bool StartWithWindows { get; set; } = true;
     public string? PreviousTeamSpeakProfile { get; set; }
@@ -52,7 +50,6 @@ public sealed class SettingsStore
             var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
             settings.Bindings ??= PttBinding.AcreDefaults();
             settings.RememberedDefaults ??= new();
-            settings.NoiseReductionDb = Math.Clamp(settings.NoiseReductionDb, 0, NoiseGate.MaxReductionDb);
             settings.Preview ??= new RadioPreviewSettings();
             settings.SchemaVersion = AppSettings.CurrentSchema;
             return settings;

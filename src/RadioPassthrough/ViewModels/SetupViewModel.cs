@@ -74,18 +74,6 @@ public sealed class SetupViewModel : ObservableObject
         }
     }
 
-    public int MicChannelIndex
-    {
-        get => (int)_app.Settings.MicChannels;
-        set
-        {
-            _app.Settings.MicChannels = (MicChannelMode)value;
-            _app.Engine.MicMode = (MicChannelMode)value;
-            _app.ScheduleSave();
-            OnPropertyChanged();
-        }
-    }
-
     public bool StartWithWindows
     {
         get => _app.Installation.IsThisCopy(Environment.ProcessPath) ? _app.Installation.StartsWithWindows : AutoStart.IsEnabled;
@@ -292,7 +280,7 @@ public sealed class SetupViewModel : ObservableObject
     private async Task CopyDiagnosticsAsync()
     {
         var arma = _app.Arma.Current;
-        string report = await Task.Run(() => DiagnosticsReport.Build(_app.Settings, _app.Engine.Status, _lastTeamSpeak, LatestChecks, arma));
+        string report = await Task.Run(() => DiagnosticsReport.Build(_app.Settings, _app.Engine.Status, _lastTeamSpeak, LatestChecks, arma, _app.Engine.Dropouts));
         try
         {
             Clipboard.SetText(report);

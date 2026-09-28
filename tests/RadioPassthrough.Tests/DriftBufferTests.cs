@@ -45,6 +45,34 @@ public class DriftBufferTests
     }
 
     [Fact]
+    public void Stereo_channels_stay_separate_and_aligned()
+    {
+        var buffer = new DriftBuffer(960, channels: 2);
+        var chunk = new float[441 * 2];
+        var block = new float[480 * 2];
+        long n = 0;
+        int due = 0;
+        var outL = new List<float>();
+        var outR = new List<float>();
+        for (int step = 0; step < 400; step++)
+        {
+            for (int f = 0; f < 441; f++, n++)
+            {
+                chunk[f * 2] = 0.5f * MathF.Sin(2 * MathF.PI * 440 * n / 48000);
+                chunk[f * 2 + 1] = -chunk[f * 2]; // right is the exact inverse of left
+            }
+            buffer.Write(chunk);
+            for (due += 441; due >= 480; due -= 480)
+                if (buffer.Read(block) == block.Length)
+                    for (int f = 0; f < 480; f++) { outL.Add(block[f * 2]); outR.Add(block[f * 2 + 1]); }
+        }
+
+        Assert.True(outL.Count > 150_000, $"only {outL.Count} frames");
+        for (int i = 0; i < outL.Count; i++)
+            Assert.Equal(-outL[i], outR[i], 5); // same timing on both sides, nothing crossed over
+    }
+
+    [Fact]
     public void Tone_keeps_its_level_and_stays_smooth()
     {
         var buffer = new DriftBuffer(960);
