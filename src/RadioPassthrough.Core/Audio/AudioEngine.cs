@@ -26,6 +26,8 @@ public sealed class AudioEngine : IAsyncDisposable
 
     private readonly SemaphoreSlim _ops = new(1, 1);
     private readonly Mixer _mixer = new();
+    private readonly NoiseGate _micGate = new();
+    private volatile bool _micGateReset;
     private readonly DriftBuffer _micBuffer = new(960);
     private readonly DriftBuffer _gameBuffer = new(1440);
     private readonly MixProvider _provider;
@@ -67,6 +69,9 @@ public sealed class AudioEngine : IAsyncDisposable
 
     // Master switch: off means mic only, as if the app weren't adding anything.
     public bool GameAudioEnabled { get; set; } = true;
+
+    // Turns the mic down between words so background noise isn't sent (mic only, never the game).
+    public bool MicGateEnabled { get; set; } = true;
 
     // While a test runs the radio key always works, even with game audio switched off.
     public bool TestActive { get; set; }
@@ -285,6 +290,7 @@ public sealed class AudioEngine : IAsyncDisposable
         _micDeviceId = null;
         if (mic is not null) await mic.DisposeAsync().ConfigureAwait(false);
         _micBuffer.Reset();
+        _micGateReset = true; // the audio thread resets it before its next block
     }
 
     private async Task CloseGameAsync()
@@ -394,6 +400,12 @@ public sealed class AudioEngine : IAsyncDisposable
                 var mono = _mono.AsSpan(0, n);
 
                 engine._micBuffer.Read(mic);
+                if (engine._micGateReset)
+                {
+                    engine._micGateReset = false;
+                    engine._micGate.Reset();
+                }
+                if (engine.MicGateEnabled) engine._micGate.Process(mic);
                 if (engine._gameActive) engine._gameBuffer.Read(game);
                 else game.Clear();
 

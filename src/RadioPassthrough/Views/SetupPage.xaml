@@ -103,10 +103,15 @@
                     <TextBlock Text="Channels" Style="{StaticResource RowLabel}" />
                     <c:SegmentedControl Items="{StaticResource Channels}" SelectedIndex="{Binding MicChannelIndex}" Width="228" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 </Grid>
+                <Border Style="{StaticResource Divider}" />
+                <Grid Style="{StaticResource Row}">
+                    <TextBlock Text="Hide background noise between words" Style="{StaticResource RowLabel}" Margin="0,0,56,0" />
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MicNoiseGate}" HorizontalAlignment="Right" AutomationProperties.Name="Hide background noise between words" />
+                </Grid>
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="Both matches what TeamSpeak heard from this mic before. If your mic is plugged into one input and sounds quiet, pick that input." />
+                   Text="Your mic's hum and fan noise would turn into hiss on the radio, so it's turned down while you're not talking. Only your mic: game audio is never touched. If your mic is plugged into one input, pick that input under Channels." />
 
         <TextBlock Text="Windows" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">

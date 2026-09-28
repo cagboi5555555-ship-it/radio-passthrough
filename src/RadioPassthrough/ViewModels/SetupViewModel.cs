@@ -86,6 +86,19 @@ public sealed class SetupViewModel : ObservableObject
         }
     }
 
+    public bool MicNoiseGate
+    {
+        get => _app.Settings.MicNoiseGate;
+        set
+        {
+            _app.Settings.MicNoiseGate = value;
+            _app.Engine.MicGateEnabled = value;
+            _app.ScheduleSave();
+            Log.Info($"Mic noise gate turned {(value ? "on" : "off")}.");
+            OnPropertyChanged();
+        }
+    }
+
     public bool StartWithWindows
     {
         get => _app.Installation.IsThisCopy(Environment.ProcessPath) ? _app.Installation.StartsWithWindows : AutoStart.IsEnabled;

@@ -9,7 +9,7 @@ Arma 3's own sound ── radio key held ─┴─► mix ─► VB-CABLE ─►
 
 - Direct speech stays voice only. Game sound is added **only while you hold a radio key** in Arma (ACRE2 defaults: Caps Lock, and Shift, Ctrl or Alt + Caps Lock).
 - Your headset keeps playing Arma and TeamSpeak exactly as before. Nothing gets rerouted.
-- The default **Doc 1:1** mix is plain voice plus game with nothing added. TeamSpeak keeps your usual noise removal and volume settings.
+- The default **Doc 1:1** mix is plain voice plus game with nothing added. Your mic's background noise (fans, hum) is gated out between words so ACRE's radio effect doesn't turn it into hiss; game audio is never touched.
 - **Radio Passthrough never connects to the internet.** It contains no networking code at all. See [What it does on your PC](#what-it-does-on-your-pc).
 
 <p align="center">

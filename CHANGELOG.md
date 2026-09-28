@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+
+- **Cleaner radio: mic background noise is no longer sent.** Hum and fan noise from your mic got boosted by ACRE's radio effect into extra hiss on top of ACRE's own static. A noise gate on your mic now turns it down (by 30 dB) while you're not talking. It follows your mic's own noise level, opens instantly when you speak, and never touches game audio. Setup → Microphone → *Hide background noise between words* (on by default).
+
 ## 1.2.2
 
 **Safer by default**

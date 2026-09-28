@@ -17,6 +17,7 @@ public sealed class AppSettings
     public bool TrayHintShown { get; set; }
     public string? MicDeviceId { get; set; }
     public MicChannelMode MicChannels { get; set; } = MicChannelMode.Both;
+    public bool MicNoiseGate { get; set; } = true;
     public MixPreset Preset { get; set; } = MixPreset.DocOneToOne;
     public MixSettings Custom { get; set; } = MixSettings.CustomDefault;
     public List<PttBinding> Bindings { get; set; } = PttBinding.AcreDefaults();

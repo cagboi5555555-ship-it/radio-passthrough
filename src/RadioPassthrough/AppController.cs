@@ -76,6 +76,7 @@ public sealed class AppController : IAsyncDisposable
         Log.Info($"Starting {Core.AppInfo.Name} {Core.AppInfo.Version.ToString(3)} from {Environment.ProcessPath}");
         Engine.Mixer.Settings = Settings.ActiveMix;
         Engine.MicMode = Settings.MicChannels;
+        Engine.MicGateEnabled = Settings.MicNoiseGate;
         Engine.GameAudioEnabled = Settings.GameAudioEnabled;
 
         if (Settings.MicDeviceId is null)
