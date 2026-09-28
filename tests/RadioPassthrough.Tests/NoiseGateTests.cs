@@ -21,12 +21,18 @@ public class NoiseGateTests
         return x;
     }
 
+    // chunk 0 = random sizes from 1 to 1000 samples, like an audio device that hands over whatever it has.
     private static float[] Gate(float[] input, int chunk = 480)
     {
         var gate = new NoiseGate();
         var output = input.ToArray();
-        for (int offset = 0; offset < output.Length; offset += chunk)
-            gate.Process(output.AsSpan(offset, Math.Min(chunk, output.Length - offset)));
+        var sizes = new Random(7);
+        for (int offset = 0; offset < output.Length;)
+        {
+            int n = Math.Min(chunk > 0 ? chunk : sizes.Next(1, 1001), output.Length - offset);
+            gate.Process(output.AsSpan(offset, n));
+            offset += n;
+        }
         return output;
     }
 
@@ -38,21 +44,29 @@ public class NoiseGateTests
         return Db.FromGain((float)Math.Sqrt(s / (b - a)));
     }
 
-    [Fact]
-    public void Steady_background_noise_is_turned_down_about_30_dB()
+    [Theory]
+    [InlineData(480)]
+    [InlineData(144)]
+    [InlineData(64)]
+    [InlineData(1)]
+    [InlineData(0)]
+    public void Steady_background_noise_is_turned_down_about_30_dB(int chunk)
     {
         var input = Signal(4, noiseDb: -50);
-        var output = Gate(input);
+        var output = Gate(input, chunk);
         Assert.InRange(RmsDb(output, 2, 4) - RmsDb(input, 2, 4), -31, -28);
     }
 
-    [Fact]
-    public void Speech_passes_untouched_and_the_noise_between_words_is_gated()
+    [Theory]
+    [InlineData(480)]
+    [InlineData(144)]
+    [InlineData(0)]
+    public void Speech_passes_untouched_and_the_noise_between_words_is_gated(int chunk)
     {
         // Talking at -25 dBFS for 1 s every 2 s, over -50 dBFS noise.
         bool Talking(double t) => t % 2.0 is >= 1.0 and < 2.0;
         var input = Signal(8, noiseDb: -50, voiceDb: -25, talking: Talking);
-        var output = Gate(input);
+        var output = Gate(input, chunk);
 
         for (double start = 3; start < 8; start += 2)
         {
@@ -67,8 +81,10 @@ public class NoiseGateTests
         bool Talking(double t) => t is >= 2.0 and < 2.5;
         var input = Signal(3, noiseDb: -50, voiceDb: -30, talking: Talking);
         var output = Gate(input);
-        // The first 10 ms of the word already come through at full level (within 1 dB).
-        Assert.InRange(RmsDb(output, 2.0, 2.01) - RmsDb(input, 2.0, 2.01), -1, 0.1);
+        // The gate fades in over about a millisecond: the first 10 ms of the word lose under 1.5 dB on
+        // average, and from 10 ms on it's at full level.
+        Assert.InRange(RmsDb(output, 2.0, 2.01) - RmsDb(input, 2.0, 2.01), -1.5, 0.1);
+        Assert.InRange(RmsDb(output, 2.01, 2.02) - RmsDb(input, 2.01, 2.02), -0.1, 0.1);
     }
 
     [Fact]

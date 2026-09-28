@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+- The mic noise gate from 1.3.0 now really closes. It measured loudness per audio chunk, and with the small chunks VB-CABLE uses it kept reopening on the noise itself. It now measures the same way whatever the chunk size (tested from 1 to 1000 samples, and on a real mic: background noise goes from −50 to −80 dBFS between words).
+
 ## 1.3.0
 
 - **Cleaner radio: mic background noise is no longer sent.** Hum and fan noise from your mic got boosted by ACRE's radio effect into extra hiss on top of ACRE's own static. A noise gate on your mic now turns it down (by 30 dB) while you're not talking. It follows your mic's own noise level, opens instantly when you speak, and never touches game audio. Setup → Microphone → *Hide background noise between words* (on by default).
