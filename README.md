@@ -47,7 +47,7 @@ Nothing on the Test tab changes your settings.
 ## Everyday controls
 
 - **Live tab:** see when you're on the radio and your levels. Switch *Send game audio over radio* off to go voice-only.
-- **Custom mix:** adjust game level, dip the game while you talk, even out your voice, or catch loud peaks. Compare against Doc 1:1 on the Test tab first.
+- **Background noise:** how far your mic is turned down between words (Off to −40 dB, default −30 dB), so fan and room noise doesn't turn into hiss on the radio. The mix itself is always Doc 1:1.
 - **Radio keys:** add or remove keys (mouse side buttons work) if you changed ACRE's keybinds. With TFAR, add your TFAR radio keys. The mix works the same; only the Test tab's radio preview is ACRE-specific.
 - **Tray menu:** open the app, switch game audio on or off, or quit.
 
@@ -59,7 +59,8 @@ Nothing on the Test tab changes your settings.
 | Teammates hear me but no game sound | Hold the radio key **in Arma** (it only counts while Arma is the active window). The Live tab should say *On the radio*. |
 | Setup says Arma runs as administrator | Click **Restart as admin**, or stop running Arma as admin. |
 | My speakers or mic switched to "CABLE" | The app switches them back by itself (Setup → *Keep my speakers and mic as the defaults*). |
-| Game too loud or quiet on the radio | Live → Mix → **Custom** → *Game level*. Test it on the Test tab. |
+| Game too loud or quiet on the radio | Change Arma's own volume, as with the Voicemeeter setup. Test it on the Test tab. |
+| Teammates hear hiss behind my voice | Live → *Background noise*: move it further right. |
 | My antivirus complains | Unsigned new files sometimes get flagged. [Check your download is the genuine build](SECURITY.md#verifying-a-download), or build it yourself from this source (below). |
 | Still stuck | Setup → **Copy diagnostics**, then paste it where you ask for help. Your Windows user name is removed from it. |
 

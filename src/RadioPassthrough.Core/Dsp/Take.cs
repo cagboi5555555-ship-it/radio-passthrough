@@ -1,8 +1,7 @@
 namespace RadioPassthrough.Core.Dsp;
 
-// One test recording kept as separate stems (raw mic, raw game) plus the exact chunks the live mixer
-// processed and whether the radio key was held for each, so the same moment can be re-rendered with any
-// mix. Rendering with the mix that was live reproduces what was sent, sample for sample.
+// One test recording kept as separate stems (mic, game) plus the exact chunks the live mixer processed
+// and whether the radio key was held for each. Rendering it reproduces what was sent, sample for sample.
 public sealed class Take
 {
     // Evenly sized blocks: `gate` has one entry per block of `blockSize` samples (the last may be shorter).
@@ -34,9 +33,9 @@ public sealed class Take
             yield return (offset, ChunkLengths[c], Gate[c]);
     }
 
-    public float[] Render(MixSettings settings)
+    public float[] Render()
     {
-        var mixer = new Mixer { Settings = settings };
+        var mixer = new Mixer();
         var output = new float[Length];
         foreach (var (offset, n, radio) in Chunks())
             mixer.Process(Mic.AsSpan(offset, n), Game.AsSpan(offset, n), radio, output.AsSpan(offset, n));

@@ -114,93 +114,24 @@ public sealed class LiveViewModel : ObservableObject
         }
     }
 
-    // Mix
+    // Background noise: how far the mic is turned down between words (0 = off).
 
-    public int PresetIndex
+    public double NoiseReduction
     {
-        get => _app.Settings.Preset == MixPreset.DocOneToOne ? 0 : 1;
+        get => _app.Settings.NoiseReductionDb;
         set
         {
-            var preset = value == 0 ? MixPreset.DocOneToOne : MixPreset.Custom;
-            if (preset == _app.Settings.Preset) return;
-            _app.Settings.Preset = preset;
-            Changed();
+            float db = (float)Math.Round(Math.Clamp(value, 0, NoiseGate.MaxReductionDb));
+            if (db == _app.Settings.NoiseReductionDb) return;
+            _app.Settings.NoiseReductionDb = db;
+            _app.Engine.NoiseReductionDb = db;
+            _app.ScheduleSave();
             OnPropertyChanged();
-            OnPropertyChanged(nameof(IsCustom));
-            OnPropertyChanged(nameof(MixFootnote));
+            OnPropertyChanged(nameof(NoiseReductionText));
         }
     }
 
-    public bool IsCustom => _app.Settings.Preset == MixPreset.Custom;
-
-    public string MixFootnote => IsCustom
-        ? "Your own mix. Compare it with Doc 1:1 on the Test tab before using it on a server."
-        : "Your voice plus the game, nothing added: the same sound as the Voicemeeter setup. TeamSpeak keeps your usual processing.";
-
-    private MixSettings Custom
-    {
-        get => _app.Settings.Custom;
-        set
-        {
-            _app.Settings.Custom = value;
-            Changed();
-        }
-    }
-
-    public double GameDb
-    {
-        get => Custom.GameDb;
-        set { Custom = Custom with { GameDb = (float)Math.Round(value) }; OnPropertyChanged(); OnPropertyChanged(nameof(GameDbText)); }
-    }
-
-    public string GameDbText => Signed(Custom.GameDb);
-
-    public double MicDb
-    {
-        get => Custom.MicDb;
-        set { Custom = Custom with { MicDb = (float)Math.Round(value) }; OnPropertyChanged(); OnPropertyChanged(nameof(MicDbText)); }
-    }
-
-    public string MicDbText => Signed(Custom.MicDb);
-
-    public bool DuckEnabled
-    {
-        get => Custom.DuckEnabled;
-        set { Custom = Custom with { DuckEnabled = value }; OnPropertyChanged(); }
-    }
-
-    public double DuckDb
-    {
-        get => Custom.DuckDb;
-        set { Custom = Custom with { DuckDb = (float)Math.Round(value) }; OnPropertyChanged(); OnPropertyChanged(nameof(DuckDbText)); }
-    }
-
-    public string DuckDbText => $"−{Custom.DuckDb:0} dB";
-
-    public bool LevelerEnabled
-    {
-        get => Custom.LevelerEnabled;
-        set { Custom = Custom with { LevelerEnabled = value }; OnPropertyChanged(); }
-    }
-
-    public bool LimiterEnabled
-    {
-        get => Custom.LimiterEnabled;
-        set { Custom = Custom with { LimiterEnabled = value }; OnPropertyChanged(); }
-    }
-
-    private static string Signed(float db) => db switch
-    {
-        > 0 => $"+{db:0} dB",
-        < 0 => $"−{-db:0} dB",
-        _ => "0 dB",
-    };
-
-    private void Changed()
-    {
-        _app.ApplyMix();
-        _app.ScheduleSave();
-    }
+    public string NoiseReductionText => _app.Settings.NoiseReductionDb <= 0 ? "Off" : $"−{_app.Settings.NoiseReductionDb:0} dB";
 
     // Radio keys
 

@@ -27,6 +27,7 @@ public sealed class AudioEngine : IAsyncDisposable
     private readonly SemaphoreSlim _ops = new(1, 1);
     private readonly Mixer _mixer = new();
     private readonly NoiseGate _micGate = new();
+    private readonly MicDownmix _micDownmix = new();
     private volatile bool _micGateReset;
     private readonly DriftBuffer _micBuffer = new(960);
     private readonly DriftBuffer _gameBuffer = new(1440);
@@ -45,7 +46,6 @@ public sealed class AudioEngine : IAsyncDisposable
     private float[] _gameMono = new float[4096];
 
     private string? _wantedMicId;
-    private volatile int _micMode;
     private GameProcess? _arma;
     private (int Pid, string Name)? _testSource;
     private volatile bool _gameActive;
@@ -70,8 +70,13 @@ public sealed class AudioEngine : IAsyncDisposable
     // Master switch: off means mic only, as if the app weren't adding anything.
     public bool GameAudioEnabled { get; set; } = true;
 
-    // Turns the mic down between words so background noise isn't sent (mic only, never the game).
-    public bool MicGateEnabled { get; set; } = true;
+    // How far the mic is turned down between words so its background noise isn't sent; 0 = off.
+    // Mic only: game audio never goes through it.
+    public float NoiseReductionDb
+    {
+        get => _micGate.ReductionDb;
+        set => _micGate.ReductionDb = value;
+    }
 
     // While a test runs the radio key always works, even with game audio switched off.
     public bool TestActive { get; set; }
@@ -96,8 +101,8 @@ public sealed class AudioEngine : IAsyncDisposable
 
     public MicChannelMode MicMode
     {
-        get => (MicChannelMode)_micMode;
-        set => _micMode = (int)value;
+        get => _micDownmix.Mode;
+        set => _micDownmix.Mode = value;
     }
 
     public Task SetMicAsync(string? deviceId)
@@ -207,6 +212,7 @@ public sealed class AudioEngine : IAsyncDisposable
         try
         {
             _micBuffer.Reset();
+            _micDownmix.Reset();
             var mic = await CaptureSource.OpenDeviceAsync(wanted, OnMicData).ConfigureAwait(false);
             mic.Faulted += _ => OnFault(Part.Mic, mic);
             _mic = mic;
@@ -330,7 +336,7 @@ public sealed class AudioEngine : IAsyncDisposable
     {
         int frames = interleaved.Length / channels;
         if (_micMono.Length < frames) _micMono = new float[frames * 2];
-        Downmix.ToMono(interleaved, channels, MicMode, _micMono);
+        _micDownmix.Process(interleaved, channels, _micMono);
         _micBuffer.Write(_micMono.AsSpan(0, frames));
     }
 
@@ -338,7 +344,7 @@ public sealed class AudioEngine : IAsyncDisposable
     {
         int frames = interleaved.Length / channels;
         if (_gameMono.Length < frames) _gameMono = new float[frames * 2];
-        Downmix.ToMono(interleaved, channels, MicChannelMode.Both, _gameMono);
+        Downmix.ToMono(interleaved, channels, _gameMono);
         _gameBuffer.Write(_gameMono.AsSpan(0, frames));
     }
 
@@ -405,7 +411,7 @@ public sealed class AudioEngine : IAsyncDisposable
                     engine._micGateReset = false;
                     engine._micGate.Reset();
                 }
-                if (engine.MicGateEnabled) engine._micGate.Process(mic);
+                engine._micGate.Process(mic);
                 if (engine._gameActive) engine._gameBuffer.Read(game);
                 else game.Clear();
 

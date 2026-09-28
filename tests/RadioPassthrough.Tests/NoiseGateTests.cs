@@ -58,6 +58,21 @@ public class NoiseGateTests
     }
 
     [Theory]
+    [InlineData(0f)]
+    [InlineData(15f)]
+    [InlineData(40f)]
+    public void The_slider_sets_how_far_the_noise_goes_down(float reduction)
+    {
+        var input = Signal(4, noiseDb: -50);
+        var gate = new NoiseGate { ReductionDb = reduction };
+        var output = input.ToArray();
+        for (int offset = 0; offset < output.Length; offset += 480) gate.Process(output.AsSpan(offset, 480));
+
+        if (reduction == 0) Assert.Equal(input, output); // off: untouched, bit for bit
+        else Assert.InRange(RmsDb(output, 2, 4) - RmsDb(input, 2, 4), -reduction - 1, -reduction + 1);
+    }
+
+    [Theory]
     [InlineData(480)]
     [InlineData(144)]
     [InlineData(0)]

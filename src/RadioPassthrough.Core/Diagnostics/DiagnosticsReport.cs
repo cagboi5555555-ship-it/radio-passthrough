@@ -31,8 +31,7 @@ public static class DiagnosticsReport
         sb.AppendLine();
 
         sb.AppendLine("Settings");
-        sb.AppendLine($"  mix: {settings.Preset}, game audio on: {settings.GameAudioEnabled}, mic channels: {settings.MicChannels}, mic noise gate: {settings.MicNoiseGate}");
-        sb.AppendLine($"  custom: {settings.Custom}");
+        sb.AppendLine($"  game audio on: {settings.GameAudioEnabled}, mic channels: {settings.MicChannels}, background noise reduction: {settings.NoiseReductionDb:0} dB");
         sb.AppendLine($"  radio keys: {string.Join(", ", settings.Bindings.Select(KeyNames.Describe))}");
         sb.AppendLine($"  keep real defaults: {settings.KeepRealDefaults}, hide unused cable devices: {settings.HideUnusedCableDevices}");
         sb.AppendLine();

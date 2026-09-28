@@ -10,18 +10,10 @@
             <sys:String>What TeamSpeak gets</sys:String>
             <sys:String>What a teammate hears</sys:String>
         </x:Array>
-        <x:Array x:Key="Mixes" Type="{x:Type sys:String}">
-            <sys:String>Doc 1:1</sys:String>
-            <sys:String>Custom</sys:String>
-        </x:Array>
         <x:Array x:Key="Signals" Type="{x:Type sys:String}">
             <sys:String>Strong</sys:String>
             <sys:String>Fair</sys:String>
             <sys:String>Weak</sys:String>
-        </x:Array>
-        <x:Array x:Key="Codecs" Type="{x:Type sys:String}">
-            <sys:String>Opus Voice</sys:String>
-            <sys:String>Opus Music</sys:String>
         </x:Array>
         <x:Array x:Key="TsListen" Type="{x:Type sys:String}">
             <sys:String>As TeamSpeak processed it</sys:String>
@@ -103,11 +95,6 @@
                         </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource Divider}" />
-                    <Grid Style="{StaticResource Row}">
-                        <TextBlock Text="Mix" Style="{StaticResource RowLabel}" />
-                        <c:SegmentedControl Items="{StaticResource Mixes}" SelectedIndex="{Binding MixIndex}" Width="196" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                    </Grid>
-                    <Border Style="{StaticResource Divider}" />
                     <StackPanel Margin="16,12,16,12">
                         <TextBlock Text="Listen to" Style="{StaticResource RowLabel}" Margin="0,0,0,8" />
                         <c:SegmentedControl Items="{StaticResource Listen}" SelectedIndex="{Binding ListenIndex}" />
@@ -118,24 +105,8 @@
                             <TextBlock Text="Signal" Style="{StaticResource RowLabel}" />
                             <c:SegmentedControl Items="{StaticResource Signals}" SelectedIndex="{Binding SignalIndex}" Width="228" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
-                        <Border Style="{StaticResource Divider}" />
-                        <Grid Style="{StaticResource Row}">
-                            <TextBlock Text="Channel codec" Style="{StaticResource RowLabel}" />
-                            <c:SegmentedControl Items="{StaticResource Codecs}" SelectedIndex="{Binding CodecIndex}" Width="228" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                        </Grid>
-                        <Border Style="{StaticResource Divider}" />
-                        <Grid Style="{StaticResource Row}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="116" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Codec quality" Style="{StaticResource RowLabel}" />
-                            <Slider Grid.Column="1" Style="{StaticResource Slider}" Minimum="0" Maximum="10" Value="{Binding Quality}" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" />
-                            <TextBlock Grid.Column="2" Text="{Binding QualityText}" Style="{StaticResource Number}" HorizontalAlignment="Right" />
-                        </Grid>
                         <TextBlock Style="{StaticResource Footnote}" Margin="16,0,16,12"
-                                   Text="TeamSpeak's Opus compression at your channel's quality, then ACRE2's own radio filter, noise and distortion." />
+                                   Text="A preview only: TeamSpeak's compression, then the radio effect your teammates' ACRE2 adds on their side. The app itself never adds any of this to what you send." />
                     </StackPanel>
                     <Border Style="{StaticResource Divider}" />
                     <Grid Margin="16,12">

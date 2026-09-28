@@ -9,7 +9,8 @@ namespace RadioPassthrough.Core.Dsp;
 // over chunks of any size, and the gate must behave the same for all of them.
 public sealed class NoiseGate
 {
-    public const float ClosedDb = -30f;          // how far the mic is turned down between words
+    public const float DefaultReductionDb = 30f; // how far the mic is turned down between words
+    public const float MaxReductionDb = 40f;
     public const float OpenAboveFloorDb = 9f;    // voice has to be this far above the noise to open
     public const float CloseAboveFloorDb = 5f;   // and falls back under this before it closes
     public const float LowestThresholdDb = -62f; // never opens on near-silence from a very quiet mic
@@ -17,7 +18,6 @@ public sealed class NoiseGate
     private const float HoldSeconds = 0.30f;     // keeps word endings and short pauses intact
     private const int FloorBlock = Mixer.SampleRate / 100;
 
-    private static readonly float Closed = Db.ToGain(ClosedDb);
     private static readonly float Attack = Coefficient(0.001f);
     private static readonly float Release = Coefficient(0.120f);
     private static readonly float Level = Coefficient(0.005f);  // loudness follower: reacts within a few ms
@@ -31,8 +31,16 @@ public sealed class NoiseGate
     private float _gain = 1f;
     private int _hold;
     private bool _open = true;
+    private float _closed = Db.ToGain(-DefaultReductionDb);
 
     public bool IsOpen => _open;
+
+    // 0 = off. Set from any thread; takes effect on the next chunk.
+    public float ReductionDb
+    {
+        get => -Db.FromGain(Volatile.Read(ref _closed));
+        set => Volatile.Write(ref _closed, value <= 0 ? 1f : Db.ToGain(-Math.Min(value, MaxReductionDb)));
+    }
 
     public float NoiseFloorDb => float.IsNaN(_floorDb) ? Db.Floor : _floorDb;
 
@@ -55,6 +63,7 @@ public sealed class NoiseGate
     {
         // Thresholds in energy terms, so the per-sample loop needs no logarithms.
         float openAt = DbToEnergy(_openAt), closeAt = DbToEnergy(_closeAt);
+        float closed = Volatile.Read(ref _closed);
 
         for (int i = 0; i < mic.Length; i++)
         {
@@ -72,7 +81,7 @@ public sealed class NoiseGate
                 _open = false;
             }
 
-            float target = _open ? 1f : Closed;
+            float target = _open ? 1f : closed;
             _gain += (target - _gain) * (target > _gain ? Attack : Release);
             mic[i] = x * _gain;
 

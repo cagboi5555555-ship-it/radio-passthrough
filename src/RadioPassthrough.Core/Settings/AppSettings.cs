@@ -16,18 +16,13 @@ public sealed class AppSettings
     public Dictionary<string, string> RememberedDefaults { get; set; } = new();
     public bool TrayHintShown { get; set; }
     public string? MicDeviceId { get; set; }
-    public MicChannelMode MicChannels { get; set; } = MicChannelMode.Both;
-    public bool MicNoiseGate { get; set; } = true;
-    public MixPreset Preset { get; set; } = MixPreset.DocOneToOne;
-    public MixSettings Custom { get; set; } = MixSettings.CustomDefault;
+    public MicChannelMode MicChannels { get; set; } = MicChannelMode.Auto;
+    public float NoiseReductionDb { get; set; } = NoiseGate.DefaultReductionDb;
     public List<PttBinding> Bindings { get; set; } = PttBinding.AcreDefaults();
     public bool StartWithWindows { get; set; } = true;
     public string? PreviousTeamSpeakProfile { get; set; }
     public RadioPreviewSettings Preview { get; set; } = new();
     public bool FirstRunDone { get; set; }
-
-    [JsonIgnore]
-    public MixSettings ActiveMix => Preset == MixPreset.DocOneToOne ? MixSettings.DocOneToOne : Custom;
 }
 
 public sealed class SettingsStore
@@ -57,7 +52,7 @@ public sealed class SettingsStore
             var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
             settings.Bindings ??= PttBinding.AcreDefaults();
             settings.RememberedDefaults ??= new();
-            settings.Custom ??= MixSettings.CustomDefault;
+            settings.NoiseReductionDb = Math.Clamp(settings.NoiseReductionDb, 0, NoiseGate.MaxReductionDb);
             settings.Preview ??= new RadioPreviewSettings();
             settings.SchemaVersion = AppSettings.CurrentSchema;
             return settings;

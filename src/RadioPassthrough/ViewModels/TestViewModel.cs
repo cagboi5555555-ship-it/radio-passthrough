@@ -28,17 +28,15 @@ public sealed class TestViewModel : ObservableObject
     private string _recordLabel = "Record 10 seconds";
     private string _tsLabel = "Start 30-second TeamSpeak test";
     private string? _tsMessage;
-    private int _listenIndex, _mixIndex, _tsListenIndex;
+    private int _listenIndex, _tsListenIndex;
     private Take? _take;
     private float[]? _cableClip, _tsClip, _waveSamples;
-    private MixSettings _mixDuringRecording = MixSettings.DocOneToOne;
     private IReadOnlyList<(double, double)>? _spans;
     private string _peakText = "", _loudText = "";
 
     public TestViewModel(AppController app)
     {
         _app = app;
-        _mixIndex = app.Settings.Preset == MixPreset.DocOneToOne ? 0 : 1;
         RefreshSourcesCommand = new AsyncCommand(RefreshSourcesAsync);
         RecordCommand = new AsyncCommand(RecordAsync, () => !_tsRunning);
         PlayCommand = new AsyncCommand(() => PlayAsync(teamSpeakClip: false), () => _hasTake);
@@ -100,31 +98,11 @@ public sealed class TestViewModel : ObservableObject
 
     public bool IsTeammate => _listenIndex == 1;
 
-    public int MixIndex
-    {
-        get => _mixIndex;
-        set { if (Set(ref _mixIndex, value)) Analyze(); }
-    }
-
     public int SignalIndex
     {
         get => (int)_app.Settings.Preview.Signal;
         set { _app.Settings.Preview = _app.Settings.Preview with { Signal = (SignalStrength)value }; _app.ScheduleSave(); OnPropertyChanged(); }
     }
-
-    public int CodecIndex
-    {
-        get => (int)_app.Settings.Preview.Codec;
-        set { _app.Settings.Preview = _app.Settings.Preview with { Codec = (TeamSpeakCodec)value }; _app.ScheduleSave(); OnPropertyChanged(); OnPropertyChanged(nameof(QualityText)); }
-    }
-
-    public double Quality
-    {
-        get => _app.Settings.Preview.Quality;
-        set { _app.Settings.Preview = _app.Settings.Preview with { Quality = (int)Math.Round(value) }; _app.ScheduleSave(); OnPropertyChanged(); OnPropertyChanged(nameof(QualityText)); }
-    }
-
-    public string QualityText => $"{_app.Settings.Preview.Quality}  ·  {OpusRoundTrip.Bitrate(_app.Settings.Preview.Codec, _app.Settings.Preview.Quality) / 1000.0:0.#} kbit/s";
 
     // TeamSpeak processing test
 
@@ -193,7 +171,6 @@ public sealed class TestViewModel : ObservableObject
         try
         {
             await EnterTestAsync();
-            _mixDuringRecording = _app.Settings.ActiveMix;
             recorder = new TakeRecorder(RecordLength);
 
             var cableOut = AudioDevices.CableOutput();
@@ -242,12 +219,10 @@ public sealed class TestViewModel : ObservableObject
         Analyze();
     }
 
-    private MixSettings SelectedMix => _mixIndex == 0 ? MixSettings.DocOneToOne : _app.Settings.Custom;
-
     private void Analyze()
     {
         if (_take is not { } take) return;
-        var rendered = take.Render(SelectedMix);
+        var rendered = take.Render();
         WaveSamples = rendered;
 
         var analysis = TakeAnalysis.Of(rendered);
@@ -256,9 +231,7 @@ public sealed class TestViewModel : ObservableObject
 
         Checks.Clear();
 
-        var doc = take.Render(MixSettings.DocOneToOne);
-        var sum = take.PlainSum();
-        bool pure = doc.AsSpan().SequenceEqual(sum);
+        bool pure = rendered.AsSpan().SequenceEqual(take.PlainSum());
         Checks.Add(pure
             ? new ResultCheck("Doc 1:1 is exactly your voice plus the game, nothing added.", CheckLevel.Ok)
             : new ResultCheck("Doc 1:1 differs from a plain sum. Please report this.", CheckLevel.Attention));
@@ -286,7 +259,7 @@ public sealed class TestViewModel : ObservableObject
 
         Checks.Add(analysis.ClippedSamples == 0
             ? new ResultCheck("Nothing clipped.", CheckLevel.Ok)
-            : new ResultCheck($"{analysis.ClippedSamples:N0} samples went over full scale. Turn the game down a little, or try Catch loud peaks.", CheckLevel.Attention));
+            : new ResultCheck($"{analysis.ClippedSamples:N0} samples went over full scale. Turn Arma's volume down a little.", CheckLevel.Attention));
 
         if (_cableClip is null)
         {
@@ -294,7 +267,7 @@ public sealed class TestViewModel : ObservableObject
         }
         else
         {
-            var sent = TakeAnalysis.Of(take.Render(_mixDuringRecording));
+            var sent = TakeAnalysis.Of(rendered);
             var received = TakeAnalysis.Of(_cableClip);
             double diff = received.LoudnessDb - sent.LoudnessDb;
             Checks.Add(Math.Abs(diff) <= 1.5 || sent.LoudnessDb <= Core.Dsp.Db.Floor + 1
@@ -326,11 +299,10 @@ public sealed class TestViewModel : ObservableObject
         else
         {
             if (_take is not { } take) return;
-            var mix = SelectedMix;
             bool teammate = IsTeammate;
             clip = await Task.Run(() =>
             {
-                var rendered = take.Render(mix);
+                var rendered = take.Render();
                 return teammate ? RadioPreview.AsTeammateHears(rendered, preview) : rendered;
             });
         }

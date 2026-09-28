@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+**Back to the guide: Doc 1:1 only**
+- The Custom mix is gone (game and voice level, ducking, leveler, limiter). The mix is always the guide's: your voice plus the game at unity while a radio key is held, nothing added.
+- One simple control instead: Live → **Background noise**, from Off to −40 dB (default −30 dB). It turns your mic down between words so fan and room noise doesn't become hiss on the radio. It replaces the on/off switch in Setup.
+- The Test tab lost its Doc 1:1 / Custom switch and the codec settings. *What a teammate hears* is clearly marked as a preview of what your teammates' ACRE2 adds; the app never adds radio effects to what you send.
+
+**Mic**
+- Channels → **Auto** (new default, replaces Both): a mic plugged into one input of a two-input interface is no longer halved in level. Stereo mics are still averaged.
+
 ## 1.3.1
 
 - The mic noise gate from 1.3.0 now really closes. It measured loudness per audio chunk, and with the small chunks VB-CABLE uses it kept reopening on the noise itself. It now measures the same way whatever the chunk size (tested from 1 to 1000 samples, and on a real mic: background noise goes from −50 to −80 dBFS between words).

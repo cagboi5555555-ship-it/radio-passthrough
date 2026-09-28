@@ -25,7 +25,7 @@ public static class ClipRecorder
         {
             int frames = interleaved.Length / channels;
             if (mono.Length < frames) mono = new float[frames * 2];
-            Downmix.ToMono(interleaved, channels, MicChannelMode.Both, mono);
+            Downmix.ToMono(interleaved, channels, mono);
             lock (gate)
             {
                 // Process captures stop delivering while the app is silent; keep the timeline honest.

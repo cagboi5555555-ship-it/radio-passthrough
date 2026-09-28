@@ -19,7 +19,7 @@ public class MixerTests
         var gate = Enumerable.Range(0, 200).Select(b => b % 50 is >= 10 and < 35).ToArray();
         var take = MakeTake(gate);
 
-        var rendered = take.Render(MixSettings.DocOneToOne);
+        var rendered = take.Render();
         var sum = take.PlainSum();
 
         Assert.Equal(sum.Length, rendered.Length);
@@ -30,10 +30,9 @@ public class MixerTests
     [Fact]
     public void Recorded_take_replays_exactly_what_was_sent_live()
     {
-        // The audio device asks for uneven chunks; the recording must keep them so a re-render with the
-        // live mix matches the live output sample for sample, even with every extra switched on.
-        var settings = new MixSettings { GameDb = -3, MicDb = 2, DuckEnabled = true, DuckDb = 9, LevelerEnabled = true, LimiterEnabled = true };
-        var live = new Mixer { Settings = settings };
+        // The audio device asks for uneven chunks; the recording must keep them so a re-render matches
+        // the live output sample for sample.
+        var live = new Mixer();
         var recorder = new TakeRecorder(TimeSpan.FromSeconds(2));
         int[] sizes = [480, 480, 96, 480, 384, 441, 480, 17, 480];
         var mic = Sine(96000, 250, 0.5f);
@@ -52,7 +51,7 @@ public class MixerTests
             offset += n;
         }
 
-        var replay = recorder.ToTake().Render(settings);
+        var replay = recorder.ToTake().Render();
         Assert.Equal(sent.Count, replay.Length);
         for (int i = 0; i < replay.Length; i++)
             Assert.Equal(sent[i], replay[i]);
@@ -62,7 +61,7 @@ public class MixerTests
     public void Game_is_silent_while_radio_key_is_up()
     {
         var take = MakeTake(new bool[20]);
-        var rendered = take.Render(MixSettings.DocOneToOne);
+        var rendered = take.Render();
         for (int i = 0; i < rendered.Length; i++)
             Assert.Equal(take.Mic[i], rendered[i]);
     }
@@ -88,42 +87,5 @@ public class MixerTests
         Assert.True(maxStep <= 1f / 470, $"step {maxStep}");
         Assert.Equal(1f, all[480 * 3 - 1], 3);
         Assert.Equal(0f, all[^1], 3);
-    }
-
-    [Fact]
-    public void Limiter_keeps_peaks_under_ceiling()
-    {
-        var gate = Enumerable.Repeat(true, 100).ToArray();
-        int length = 100 * 480;
-        var take = new Take(Sine(length, 200, 0.9f), Sine(length, 90, 0.95f), gate, 480);
-
-        var rendered = take.Render(MixSettings.DocOneToOne with { LimiterEnabled = true });
-
-        Assert.True(rendered.Max(MathF.Abs) <= Mixer.LimiterCeiling + 1e-5f);
-    }
-
-    [Fact]
-    public void Ducking_lowers_game_only_while_speaking()
-    {
-        int blocks = 400;
-        var gate = Enumerable.Repeat(true, blocks).ToArray();
-        int length = blocks * 480;
-        var mic = new float[length];
-        Sine(48000, 300, 0.3f).CopyTo(mic, 0); // one second of voice, then quiet
-        var game = Sine(length, 1000, 0.2f);
-        var take = new Take(mic, game, gate, 480);
-
-        var settings = MixSettings.DocOneToOne with { DuckEnabled = true, DuckDb = 6 };
-        var ducked = take.Render(settings);
-
-        float Rms(float[] x, int from, int to) => MathF.Sqrt(x[from..to].Select(v => v * v).Average());
-        // Middle of the talking part: game is 6 dB down, so total is quieter than the plain sum.
-        var plain = take.PlainSum();
-        float gameOnlyDucked = Rms(ducked, length - 9600, length);
-        float gameOnlyPlain = Rms(plain, length - 9600, length);
-        Assert.Equal(gameOnlyPlain, gameOnlyDucked, 3); // released after voice stops
-
-        var diff = ducked.Zip(plain, (a, b) => a - b).ToArray();
-        Assert.True(Rms(diff, 9600, 24000) > 0.05f);
     }
 }

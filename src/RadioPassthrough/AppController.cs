@@ -74,9 +74,8 @@ public sealed class AppController : IAsyncDisposable
 
         _started = true;
         Log.Info($"Starting {Core.AppInfo.Name} {Core.AppInfo.Version.ToString(3)} from {Environment.ProcessPath}");
-        Engine.Mixer.Settings = Settings.ActiveMix;
         Engine.MicMode = Settings.MicChannels;
-        Engine.MicGateEnabled = Settings.MicNoiseGate;
+        Engine.NoiseReductionDb = Settings.NoiseReductionDb;
         Engine.GameAudioEnabled = Settings.GameAudioEnabled;
 
         if (Settings.MicDeviceId is null)
@@ -152,8 +151,6 @@ public sealed class AppController : IAsyncDisposable
         Log.Info("Resumed from sleep; reopening audio.");
         _ = Task.Delay(TimeSpan.FromSeconds(3)).ContinueWith(_ => Engine.RestartAsync());
     }
-
-    public void ApplyMix() => Engine.Mixer.Settings = Settings.ActiveMix;
 
     public void ScheduleSave() => ScheduleSave(TimeSpan.FromMilliseconds(600));
 
