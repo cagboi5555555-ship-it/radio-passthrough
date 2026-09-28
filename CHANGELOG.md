@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- Background noise reduction works from the moment the app starts. The mic's first instant of pure silence was taken as your room's noise level, so the gate stayed open for about 20 seconds after every start (and after brief audio dropouts).
+
 ## 1.4.0
 
 **Back to the guide: Doc 1:1 only**

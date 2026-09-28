@@ -91,6 +91,17 @@ public class NoiseGateTests
     }
 
     [Fact]
+    public void Closes_quickly_after_the_mic_starts_with_a_moment_of_silence()
+    {
+        // Audio devices hand over silence for a moment when they start; the gate must not take that for
+        // the room's noise level.
+        var noise = Signal(3, noiseDb: -44);
+        var input = new float[Rate / 2].Concat(noise).ToArray();
+        var output = Gate(input);
+        Assert.InRange(RmsDb(output, 1.5, 3.5) - RmsDb(input, 1.5, 3.5), -31, -28); // gated within 1 s of the noise
+    }
+
+    [Fact]
     public void Word_onsets_are_not_clipped()
     {
         bool Talking(double t) => t is >= 2.0 and < 2.5;

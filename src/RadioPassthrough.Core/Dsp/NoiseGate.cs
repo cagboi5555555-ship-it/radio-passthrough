@@ -17,6 +17,7 @@ public sealed class NoiseGate
     private const float FloorRiseDbPerSecond = 2f;
     private const float HoldSeconds = 0.30f;     // keeps word endings and short pauses intact
     private const int FloorBlock = Mixer.SampleRate / 100;
+    private const float DigitalSilenceDb = -90f;
 
     private static readonly float Attack = Coefficient(0.001f);
     private static readonly float Release = Coefficient(0.120f);
@@ -98,8 +99,12 @@ public sealed class NoiseGate
     }
 
     // Follows the quietest 10 ms blocks: drops quickly to a quieter block, creeps up slowly otherwise.
+    // Pure digital silence (the moment before a mic delivers anything, or a muted input) says nothing about
+    // the room's noise and is skipped; otherwise the floor would start at silence and need many seconds to
+    // climb back to the real noise, letting it through meanwhile.
     private void UpdateFloor(float blockDb)
     {
+        if (blockDb <= DigitalSilenceDb) return;
         if (float.IsNaN(_floorDb)) _floorDb = blockDb;
         else if (blockDb < _floorDb) _floorDb += (blockDb - _floorDb) * 0.3f;
         else _floorDb += MathF.Min(blockDb - _floorDb, FloorRiseDbPerSecond * FloorBlock / Mixer.SampleRate);
