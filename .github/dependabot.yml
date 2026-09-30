@@ -1,0 +1,12 @@
+# Keeps the pinned workflow actions current. NuGet packages (NAudio, Concentus) are left out on purpose:
+# an audio library update can change how you sound without any test noticing, so those are updated by
+# hand and tested by ear. Security alerts for them still come from GitHub's Dependabot alerts.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
