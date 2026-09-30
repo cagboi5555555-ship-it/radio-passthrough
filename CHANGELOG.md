@@ -10,6 +10,7 @@
 - Lighter in the tray: radio keys are checked ten times less often while Arma isn't the active window (they don't count then anyway).
 - If more than one thing is wrong with the audio, the top line shows the most important one (VB-CABLE, then mic, then game).
 - A release can no longer go out without notes in this changelog.
+- Updating: the installer now says "Update from 1.5.0 to 1.6.0" and that your settings are kept, and it deletes the downloaded setup file afterwards (switch it off if you want to keep the file).
 - Diagnostics no longer count quiet moments in Arma as audio dropouts. Windows stops sending an app's sound while it's silent; only real gaps in the middle of sound are counted now.
 
 ## 1.5.0

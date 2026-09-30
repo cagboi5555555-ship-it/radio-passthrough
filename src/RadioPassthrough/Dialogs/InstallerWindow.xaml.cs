@@ -24,7 +24,16 @@ public partial class InstallerWindow : Window
             : installed < version ? "Update"
             : installed == version ? "Reinstall"
             : "Install this version";
-        if (installed is not null) DesktopShortcut.IsChecked = installation.HasDesktopShortcut;
+        if (installed is not null)
+        {
+            DesktopShortcut.IsChecked = installation.HasDesktopShortcut;
+            InstallCard.Visibility = Visibility.Collapsed;
+            UpdateCard.Visibility = Visibility.Visible;
+            UpdateTitle.Text = installed < version ? $"Update from {installed.ToString(3)} to {version.ToString(3)}"
+                : installed == version ? $"Version {version.ToString(3)} is already installed. Reinstall it?"
+                : $"Go back from {installed.ToString(3)} to {version.ToString(3)}";
+            Title = "Update Radio Passthrough";
+        }
     }
 
     private async void Install_Click(object sender, RoutedEventArgs e)
@@ -42,6 +51,8 @@ public partial class InstallerWindow : Window
                 _installation.Install(source, AppInfo.Version, desktop, autostart);
             });
             Process.Start(new ProcessStartInfo(_installation.ExePath, "--installed") { UseShellExecute = true, WorkingDirectory = _installation.InstallDirectory })?.Dispose();
+            if (DeleteSetup.IsChecked == true && !Installation.DiscardSetupFile(source))
+                Log.Info("The setup file couldn't be removed (it's on another drive or read-only); it stays where it is.");
             Close();
         }
         catch (Exception ex)

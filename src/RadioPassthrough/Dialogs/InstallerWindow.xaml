@@ -18,7 +18,16 @@
                 <TextBlock Style="{StaticResource Secondary}" FontSize="14" Margin="0,4,0,0"
                            Text="Your teammates hear the fight behind your voice when you talk on an ACRE2 radio." />
 
-                <Border Style="{StaticResource Card}" Margin="0,22,0,0" Padding="16,6">
+                <!-- Updating: what changes and what stays. Replaces the first-install card below. -->
+                <Border x:Name="UpdateCard" Style="{StaticResource Card}" Margin="0,22,0,0" Padding="16,14" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="UpdateTitle" Style="{StaticResource RowLabel}" />
+                        <TextBlock Style="{StaticResource Secondary}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Your settings, radio keys and TeamSpeak setup stay as they are. Radio Passthrough closes for a moment and starts again by itself." />
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="InstallCard" Style="{StaticResource Card}" Margin="0,22,0,0" Padding="16,6">
                     <StackPanel>
                         <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
@@ -50,6 +59,12 @@
                 <Grid Margin="16,16,4,0">
                     <TextBlock Text="Desktop shortcut" Style="{StaticResource RowLabel}" />
                     <CheckBox x:Name="DesktopShortcut" Style="{StaticResource Switch}" HorizontalAlignment="Right" IsChecked="True" />
+                </Grid>
+
+                <Grid Margin="16,12,4,0">
+                    <TextBlock Text="Delete this setup file afterwards" Style="{StaticResource RowLabel}" Margin="0,0,56,0" />
+                    <CheckBox x:Name="DeleteSetup" Style="{StaticResource Switch}" HorizontalAlignment="Right" IsChecked="True"
+                              AutomationProperties.Name="Delete this setup file afterwards" />
                 </Grid>
 
                 <TextBlock x:Name="StatusText" Style="{StaticResource Secondary}" Margin="0,16,0,0" Visibility="Collapsed" />
