@@ -63,6 +63,10 @@ Nothing on the Test tab changes your settings.
 | My antivirus complains | Unsigned new files sometimes get flagged. [Check your download is the genuine build](SECURITY.md#verifying-a-download), or build it yourself from this source (below). |
 | Still stuck | Setup → **Copy diagnostics**, then paste it where you ask for help. Your Windows user name is removed from it. |
 
+## Update
+
+The app never checks for updates by itself, because it never goes online. To update, download the newest **RadioPassthrough-Setup-x.y.z.exe** from the Releases page, run it and click **Update**. Your settings, radio keys and TeamSpeak setup are kept, and the app restarts by itself. The downloaded setup file is deleted afterwards unless you switch that off.
+
 ## Uninstall
 
 Go to **Settings → Apps → Radio Passthrough → Uninstall**. TeamSpeak goes back to your normal mic, the *Radio Passthrough* capture profile is removed, and the app, its settings and logs are deleted. VB-CABLE stays; remove it there too if you want.
