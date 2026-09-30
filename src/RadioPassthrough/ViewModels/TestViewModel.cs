@@ -234,8 +234,8 @@ public sealed class TestViewModel : ObservableObject
 
         bool pure = rendered.AsSpan().SequenceEqual(take.PlainSum());
         Checks.Add(pure
-            ? new ResultCheck("Exactly your voice plus the game, nothing added (Doc 1:1).", CheckLevel.Ok)
-            : new ResultCheck("Doc 1:1 differs from a plain sum. Please report this.", CheckLevel.Attention));
+            ? new ResultCheck("Exactly your voice plus the game, nothing added.", CheckLevel.Ok)
+            : new ResultCheck("The mix differs from a plain sum of your voice and the game. Please report this.", CheckLevel.Attention));
 
         bool anyRadio = take.Gate.Any(g => g);
         if (!anyRadio)
