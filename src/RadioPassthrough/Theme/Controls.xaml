@@ -211,6 +211,9 @@
                             <Setter TargetName="Bg" Property="Background" Value="{DynamicResource RowHover}" />
                             <Setter Property="Foreground" Value="{DynamicResource Ink}" />
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.3" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

@@ -114,7 +114,15 @@ public sealed class AudioEngine : IAsyncDisposable
 
     private void ScheduleReconcile(TimeSpan delay)
     {
-        if (!_disposed) _retryTimer.Change(delay, Timeout.InfiniteTimeSpan);
+        if (_disposed) return;
+        try
+        {
+            _retryTimer.Change(delay, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+            // A device notification arrived while shutting down.
+        }
     }
 
     private async Task ReconcileAsync(bool forceRestart = false)

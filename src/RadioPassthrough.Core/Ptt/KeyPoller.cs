@@ -99,19 +99,37 @@ public sealed partial class KeyPoller : IDisposable
     private void Run()
     {
         using var timer = HighResolutionTimer.TryCreate();
+        bool failing = false;
         while (_running)
         {
+            int wait = FastPollMs;
             try
             {
                 Poll();
+                if (IsIdle()) wait = IdlePollMs;
+                failing = false;
             }
             catch (Exception e)
             {
-                Log.Error("Radio key poll failed", e);
+                if (!failing) Log.Error("Radio key poll failed", e); // once, not 200 times a second
+                failing = true;
             }
-            if (timer is not null) timer.Wait(5);
-            else Thread.Sleep(5);
+            if (timer is not null) timer.Wait(wait);
+            else Thread.Sleep(wait);
         }
+    }
+
+    // Every 5 ms while Arma is in front (or a key is being bound); ten times less often otherwise, since
+    // radio keys don't count outside Arma anyway. Keeps the app light while it sits in the tray all day.
+    private const int FastPollMs = 5, IdlePollMs = 50;
+
+    private bool IsIdle()
+    {
+        lock (_lock)
+        {
+            if (_capture is not null || _state.IsOpen) return false;
+        }
+        return !_gameFocused();
     }
 
     // One pass over the bound keys. Public for tests.

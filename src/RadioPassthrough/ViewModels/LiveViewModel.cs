@@ -164,7 +164,8 @@ public sealed class LiveViewModel : ObservableObject
             {
                 Binding = b,
                 Keys = keys,
-                Remove = new RelayCommand(() => SetBindings(_app.Settings.Bindings.Where(x => x != binding).ToList())),
+                // The last key stays: without one, game audio could never go out.
+                Remove = new RelayCommand(() => SetBindings(_app.Settings.Bindings.Where(x => x != binding).ToList()), () => _app.Settings.Bindings.Count > 1),
             });
         }
     }
