@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.6.0
 
+**Safer on the radio**
 - Letting go of Arma with a radio key still held (alt-tab, or Arma closing) now ends the transmission. Game audio no longer keeps going to your teammates until you release the key.
 - Setup warns when Windows' privacy settings block microphone access. Before, TeamSpeak just got silence and nothing said why.
 - While the app sits in the tray, a problem that stops TeamSpeak hearing you (mic unplugged, VB-CABLE gone, TeamSpeak switched to another mic) now pops up a notification instead of only changing the tray tooltip. The checklist also rechecks once a minute while the window is closed.
