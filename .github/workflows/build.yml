@@ -116,5 +116,12 @@ jobs:
           **What's new**
           $changes
           EOF
-          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "Radio Passthrough $TAG" --notes-file notes.md
+          # A release published from GitHub's website creates the tag and the release together; then only
+          # the built files and notes are added to it.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Radio Passthrough $TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "Radio Passthrough $TAG" --notes-file notes.md
+          fi
