@@ -55,6 +55,33 @@ public class KeyPollerTests
     }
 
     [Fact]
+    public void Closes_the_radio_when_the_game_loses_focus_with_the_key_held()
+    {
+        var poller = Poller();
+        var events = new List<bool>();
+        poller.RadioKeyChanged += events.Add;
+
+        _down.Add(PttBinding.CapsLock);
+        poller.Poll();
+        Assert.True(poller.IsRadioKeyHeld);
+
+        _focused = false; // alt-tab while still holding the key
+        poller.Poll();
+        Assert.False(poller.IsRadioKeyHeld);
+
+        _focused = true; // coming back with the key still down does not reopen it
+        poller.Poll();
+        Assert.False(poller.IsRadioKeyHeld);
+
+        _down.Remove(PttBinding.CapsLock);
+        poller.Poll();
+        _down.Add(PttBinding.CapsLock);
+        poller.Poll();
+        Assert.True(poller.IsRadioKeyHeld); // a fresh press works again
+        Assert.Equal([true, false, true], events);
+    }
+
+    [Fact]
     public void Mouse_side_buttons_map_to_their_virtual_keys()
     {
         var poller = Poller([new PttBinding(TriggerKind.Mouse, MouseButtons.X2, Modifiers.None)]);

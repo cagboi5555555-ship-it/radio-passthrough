@@ -21,6 +21,7 @@ public enum CheckAction
     FixDevices,
     OpenCableFormat,
     RestartAsAdmin,
+    OpenMicPrivacy,
 }
 
 public sealed record Check(string Title, string Detail, CheckLevel Level, CheckAction Action = CheckAction.None, string? ActionLabel = null);
@@ -38,6 +39,11 @@ public static class SystemChecks
             ? new Check("VB-CABLE", "Installed. It carries your mixed mic to TeamSpeak.", CheckLevel.Ok)
             : new Check("VB-CABLE", "Needed to hand your mixed mic to TeamSpeak. Free from VB-Audio's website; install it and this turns green by itself.",
                 CheckLevel.Blocking, CheckAction.GetCable, "Get VB-CABLE"));
+
+        if (MicrophonePrivacy.IsBlocked())
+            checks.Add(new Check("Microphone access", "Windows is blocking apps from your microphone, so TeamSpeak would get silence. " +
+                "Turn on Microphone access and Let desktop apps access your microphone.",
+                CheckLevel.Blocking, CheckAction.OpenMicPrivacy, "Open settings"));
 
         if (!ts.Installed)
         {

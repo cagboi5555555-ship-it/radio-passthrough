@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Letting go of Arma with a radio key still held (alt-tab, or Arma closing) now ends the transmission. Game audio no longer keeps going to your teammates until you release the key.
+- Setup warns when Windows' privacy settings block microphone access. Before, TeamSpeak just got silence and nothing said why.
+- If more than one thing is wrong with the audio, the top line shows the most important one (VB-CABLE, then mic, then game).
+- A release can no longer go out without notes in this changelog.
+
 ## 1.5.0
 
 **Exactly the guide's Voicemeeter setup**

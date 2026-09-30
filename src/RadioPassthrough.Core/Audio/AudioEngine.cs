@@ -132,9 +132,11 @@ public sealed class AudioEngine : IAsyncDisposable
                 await CloseGameAsync().ConfigureAwait(false);
             }
 
-            problem = await ReconcileSinkAsync().ConfigureAwait(false) ?? problem;
-            problem = await ReconcileMicAsync().ConfigureAwait(false) ?? problem;
-            problem = await ReconcileGameAsync().ConfigureAwait(false) ?? problem;
+            // The first problem wins: the cable matters more than the mic, and the mic more than the game.
+            string? sinkProblem = await ReconcileSinkAsync().ConfigureAwait(false);
+            string? micProblem = await ReconcileMicAsync().ConfigureAwait(false);
+            string? gameProblem = await ReconcileGameAsync().ConfigureAwait(false);
+            problem = sinkProblem ?? micProblem ?? gameProblem;
         }
         catch (Exception e)
         {

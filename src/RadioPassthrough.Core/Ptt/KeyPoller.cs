@@ -145,6 +145,12 @@ public sealed partial class KeyPoller : IDisposable
                         ? _state.OnTrigger(trigger.Kind, trigger.Code, true, HeldModifiers(), _gameFocused())
                         : _state.OnTrigger(trigger.Kind, trigger.Code, false, Modifiers.None, true);
                 }
+                // Alt-tabbing (or Arma exiting) with a radio key still held must not leave the radio open.
+                if (_state.IsOpen && !_gameFocused())
+                {
+                    _state.Clear();
+                    changed = true;
+                }
                 open = _state.IsOpen;
             }
         }

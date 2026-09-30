@@ -80,6 +80,10 @@ jobs:
           version="${TAG#v}"
           exe="RadioPassthrough-Setup-$version.exe"
           changes=$(awk -v h="## $version" '$0 == h { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md)
+          if [ -z "$(printf '%s' "$changes" | tr -d '[:space:]')" ]; then
+            echo "::error::CHANGELOG.md has no '## $version' section with notes"
+            exit 1
+          fi
           repo="https://github.com/$GITHUB_REPOSITORY"
           cat > notes.md <<EOF
           **Install:** download \`$exe\`, run it and click **Install** (no admin rights needed). If Windows shows *Windows protected your PC*, click **More info → Run anyway**; the file isn't code-signed yet. Then follow the Setup checklist: **Get VB-CABLE** (VB-Audio's official page), then **TeamSpeak → Set up**.
