@@ -127,6 +127,30 @@ public sealed class Installation
         DeleteDirectory(installDirectory);
     }
 
+    // The downloaded setup file isn't needed once it's installed. It is the running program, so it can't be
+    // deleted, but it can be moved on the same drive: it's parked in the Temp folder, where Windows' own
+    // clean-up removes it. Its checksum file goes too. Returns false (and leaves everything) when the file is
+    // on another drive, such as a USB stick, or can't be moved.
+    public static bool DiscardSetupFile(string setupPath)
+    {
+        try
+        {
+            string full = Path.GetFullPath(setupPath);
+            if (!full.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(full)) return false;
+            string parked = Path.Combine(Path.GetTempPath(), $"RadioPassthrough-setup-{Guid.NewGuid():N}.tmp");
+            if (!string.Equals(Path.GetPathRoot(full), Path.GetPathRoot(Path.GetFullPath(parked)), StringComparison.OrdinalIgnoreCase))
+                return false;
+            File.Move(full, parked);
+            if (File.Exists(full + ".sha256")) File.Delete(full + ".sha256");
+            Log.Info("Moved the setup file to Temp.");
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     public static void DeleteDirectory(string directory)
     {
         try
