@@ -103,14 +103,14 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1      # → dist\RadioPassth
 - `RadioPassthrough.exe --snapshot <dir> [--theme light|dark]` renders every screen to PNG off-screen. `--portable` runs without installing.
 - For admins: `RadioPassthrough-Setup-x.y.z.exe --install [--desktop-shortcut]` installs or updates without the installer window, then starts the app in the tray. Updates keep an existing desktop shortcut and the *Start with Windows* choice. `"%LOCALAPPDATA%\Programs\Radio Passthrough\RadioPassthrough.exe" --uninstall --quiet` removes it.
 - `--selftest <file>` checks the parts that need real Windows (tray, SQLite, key reading, device guard, windows, no network code loaded) without showing or changing anything. `build.ps1` runs it on the finished file.
-- Releases come only from GitHub: pushing a `v*` tag runs the tests, builds, self-tests, signs a build record and publishes the release (`.github/workflows/build.yml`). The tag must match `<Version>` in `RadioPassthrough.csproj`, and the release notes come from `CHANGELOG.md`.
+- Releases come only from GitHub: a new `v*` tag (pushed, or created by publishing a release on GitHub's website) runs the tests, builds, self-tests, signs a build record and publishes the release (`.github/workflows/build.yml`). The tag must match `<Version>` in `RadioPassthrough.csproj`, and the release notes come from `CHANGELOG.md`.
 
 ## Code signing policy
 
 Radio Passthrough has applied for free code signing from [SignPath.io](https://about.signpath.io), with a certificate by [SignPath Foundation](https://signpath.org). Until that's approved, releases are unsigned; you can still [check any download](SECURITY.md#verifying-a-download).
 
 - Only files built by this repository's GitHub workflow from a `v*` tag are released (and, once approved, signed). Nothing built on a personal PC is ever released.
-- A release only happens when an approver deliberately pushes a version tag.
+- A release only happens when an approver deliberately creates a version tag (by pushing it or publishing a release on GitHub).
 
 **Team roles**
 
