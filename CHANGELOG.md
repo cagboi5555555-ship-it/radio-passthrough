@@ -4,6 +4,7 @@
 
 - Letting go of Arma with a radio key still held (alt-tab, or Arma closing) now ends the transmission. Game audio no longer keeps going to your teammates until you release the key.
 - Setup warns when Windows' privacy settings block microphone access. Before, TeamSpeak just got silence and nothing said why.
+- While the app sits in the tray, a problem that stops TeamSpeak hearing you (mic unplugged, VB-CABLE gone, TeamSpeak switched to another mic) now pops up a notification instead of only changing the tray tooltip. The checklist also rechecks once a minute while the window is closed.
 - If more than one thing is wrong with the audio, the top line shows the most important one (VB-CABLE, then mic, then game).
 - A release can no longer go out without notes in this changelog.
 - Diagnostics no longer count quiet moments in Arma as audio dropouts. Windows stops sending an app's sound while it's silent; only real gaps in the middle of sound are counted now.
