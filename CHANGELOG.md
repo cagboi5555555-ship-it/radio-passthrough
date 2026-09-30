@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1
+
+- **Fixed: direct speech wasn't heard, only the radio.** Since 1.5.0 a mic plugged into one input of a two-input interface went to TeamSpeak on one side only. TeamSpeak averages both sides, so it got your voice at half level and its voice activation stopped opening for normal speech; the radio still worked because ACRE forces the transmission. Your mic now goes on both sides at full level. Stereo mics and the game's stereo are unchanged.
+
 ## 1.6.0
 
 **Safer on the radio**

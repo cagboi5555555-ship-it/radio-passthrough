@@ -40,6 +40,7 @@ public sealed class AudioEngine : IAsyncDisposable
     private CaptureSource? _game;
     private int _gamePid;
     private float[] _micStereo = new float[8192];
+    private readonly MicStereo _micSides = new();
     private float[] _gameStereo = new float[8192];
 
     private string? _wantedMicId;
@@ -208,6 +209,7 @@ public sealed class AudioEngine : IAsyncDisposable
         try
         {
             _micBuffer.Reset();
+            _micSides.Reset();
             var mic = await CaptureSource.OpenDeviceAsync(wanted, OnMicData).ConfigureAwait(false);
             mic.Faulted += _ => OnFault(Part.Mic, mic);
             _mic = mic;
@@ -326,11 +328,16 @@ public sealed class AudioEngine : IAsyncDisposable
         StatusChanged?.Invoke(status);
     }
 
-    // Voicemeeter's stereo input strip: the device's first two channels as left and right (a one-channel
-    // device on both). Nothing is mixed down here; TeamSpeak does that itself, as it did with B1.
-    private void OnMicData(ReadOnlySpan<float> interleaved, int channels, bool silent) =>
-        ToStereo(interleaved, channels, ref _micStereo, _micBuffer);
+    // The mic's inputs as a left/right pair; a mic on one input goes on both sides (see MicStereo).
+    private void OnMicData(ReadOnlySpan<float> interleaved, int channels, bool silent)
+    {
+        int frames = interleaved.Length / channels;
+        if (_micStereo.Length < frames * 2) _micStereo = new float[frames * 4];
+        _micSides.Process(interleaved, channels, _micStereo);
+        _micBuffer.Write(_micStereo.AsSpan(0, frames * 2));
+    }
 
+    // Arma's own left and right, untouched.
     private void OnGameData(ReadOnlySpan<float> interleaved, int channels, bool silent) =>
         ToStereo(interleaved, channels, ref _gameStereo, _gameBuffer);
 
