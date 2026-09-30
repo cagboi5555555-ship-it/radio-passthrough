@@ -140,7 +140,7 @@ public partial class App : Application
         if (!args.Contains("--tray")) ShowWindow();
     }
 
-    // A problem that stops TeamSpeak hearing you gets a tray notification when the window is hidden, so it
+    // A problem that stops the radio passthrough working gets a tray notification when the window is hidden, so it
     // isn't discovered mid-mission. It has to last a few seconds first (the engine retries on its own), and
     // each problem is announced once.
     private DispatcherTimer? _problemTimer;
@@ -170,7 +170,7 @@ public partial class App : Application
         if (_viewModel.StatusLevel != CheckLevel.Blocking || _window.IsVisible) return;
         _announcedProblem = _viewModel.StatusText;
         Log.Info($"Told the user: {_announcedProblem}");
-        _tray?.ShowMessage("TeamSpeak may not hear you", $"{_announcedProblem.TrimEnd('.')}. Click here to open Radio Passthrough.");
+        _tray?.ShowMessage("Radio Passthrough needs attention", $"{_announcedProblem.TrimEnd('.')}. Click here to see what's wrong.");
     }
 
     private ContextMenu BuildTrayMenu()

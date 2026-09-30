@@ -49,7 +49,7 @@ Nothing on the Test tab changes your settings.
 - **Live tab:** see when you're on the radio and your levels. Switch *Send game audio over radio* off to go voice-only.
 - **Radio keys:** add or remove keys (mouse side buttons work) if you changed ACRE's keybinds. With TFAR, add your TFAR radio keys. The mix works the same; only the Test tab's radio preview is ACRE-specific.
 - **Tray menu:** open the app, switch game audio on or off, or quit.
-- **Tray notifications:** if something stops TeamSpeak hearing you while the window is closed (mic unplugged, VB-CABLE gone, TeamSpeak switched to another mic), a notification pops up. Click it to see what's wrong.
+- **Tray notifications:** if something stops the passthrough working while the window is closed (no microphone, VB-CABLE gone, TeamSpeak switched to another mic), a notification pops up. Click it to see what's wrong.
 
 ## If something's wrong
 
