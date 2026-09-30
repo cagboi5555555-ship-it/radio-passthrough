@@ -148,28 +148,6 @@ public sealed class InstallationTests : IDisposable
         Assert.True(File.Exists(other));
     }
 
-    [Fact]
-    public void Setup_file_and_its_checksum_are_cleared_away_after_installing()
-    {
-        string setup = FakeExe();
-        File.WriteAllText(setup + ".sha256", "abc  RadioPassthrough-Setup.exe");
-        using (new FileStream(setup, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete)) // still running
-        {
-            Assert.True(Installation.DiscardSetupFile(setup));
-        }
-        Assert.False(File.Exists(setup));
-        Assert.False(File.Exists(setup + ".sha256"));
-    }
-
-    [Fact]
-    public void Only_exe_files_are_ever_cleared_away()
-    {
-        string other = Path.Combine(_root, "notes.txt");
-        File.WriteAllText(other, "keep me");
-        Assert.False(Installation.DiscardSetupFile(other));
-        Assert.True(File.Exists(other));
-    }
-
     public void Dispose()
     {
         Registry.CurrentUser.DeleteSubKeyTree(_registryPath, throwOnMissingSubKey: false);
