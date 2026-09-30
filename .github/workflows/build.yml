@@ -107,6 +107,8 @@ jobs:
           cat > notes.md <<EOF
           **Install:** download \`$exe\`, run it and click **Install** (no admin rights needed). If Windows shows *Windows protected your PC*, click **More info → Run anyway**; the file isn't code-signed yet. Then follow the Setup checklist: **Get VB-CABLE** (VB-Audio's official page), then **TeamSpeak → Set up**.
 
+          **Already installed?** Run the new file and click **Update**. Your settings, radio keys and TeamSpeak setup are kept.
+
           **Radio Passthrough never connects to the internet.** It has no networking code; a test and the release self-test enforce that.
 
           **Built by GitHub from this source.** This file was built and self-tested by [this workflow run]($repo/actions/runs/$GITHUB_RUN_ID) from the \`$TAG\` tag, and GitHub signed a [build record]($repo/attestations) for it. [How to check your download]($repo/blob/main/SECURITY.md#verifying-a-download). Code signing: see the [code signing policy]($repo#code-signing-policy) (applied for with SignPath Foundation).
