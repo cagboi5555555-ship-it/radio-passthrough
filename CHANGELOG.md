@@ -6,6 +6,7 @@
 - Setup warns when Windows' privacy settings block microphone access. Before, TeamSpeak just got silence and nothing said why.
 - If more than one thing is wrong with the audio, the top line shows the most important one (VB-CABLE, then mic, then game).
 - A release can no longer go out without notes in this changelog.
+- Diagnostics no longer count quiet moments in Arma as audio dropouts. Windows stops sending an app's sound while it's silent; only real gaps in the middle of sound are counted now.
 
 ## 1.5.0
 

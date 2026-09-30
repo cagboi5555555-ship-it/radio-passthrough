@@ -74,8 +74,8 @@ public sealed class AudioEngine : IAsyncDisposable
 
     public bool RadioKeyHeld => _radioKey;
 
-    // How often the mic or game buffer ran dry (each one is an audible gap). For diagnostics.
-    public (int Mic, int Game) Dropouts => (_micBuffer.Underruns, _gameBuffer.Underruns);
+    // Audible gaps in the mic or game audio since start. Pauses while Arma is silent don't count. For diagnostics.
+    public (int Mic, int Game) Dropouts => (_micBuffer.Dropouts, _gameBuffer.Dropouts);
 
     public EngineStatus Status => Volatile.Read(ref _status);
 
