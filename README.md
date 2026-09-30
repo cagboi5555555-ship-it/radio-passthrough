@@ -49,6 +49,7 @@ Nothing on the Test tab changes your settings.
 - **Live tab:** see when you're on the radio and your levels. Switch *Send game audio over radio* off to go voice-only.
 - **Radio keys:** add or remove keys (mouse side buttons work) if you changed ACRE's keybinds. With TFAR, add your TFAR radio keys. The mix works the same; only the Test tab's radio preview is ACRE-specific.
 - **Tray menu:** open the app, switch game audio on or off, or quit.
+- **Tray notifications:** if something stops the passthrough working while the window is closed (no microphone, VB-CABLE gone, TeamSpeak switched to another mic), a notification pops up. Click it to see what's wrong.
 
 ## If something's wrong
 
@@ -75,6 +76,7 @@ Everything the app reads or changes, so nothing is a surprise:
 | Records your microphone and **Arma 3's own sound** (Windows per-app audio capture) | To mix them. Nothing is recorded to disk except test clips you make on the Test tab, which stay in memory. |
 | Reads whether your radio keys are held (only the keys you bound, plus Shift/Ctrl/Alt) | To know when you're on the radio. Keys are only checked while Arma is the active window. Nothing is stored or sent. |
 | Plays the mix into VB-CABLE | That's what TeamSpeak uses as your mic. |
+| Reads Windows' microphone privacy setting (never changes it) | To tell you if Windows is blocking your mic, which would otherwise just send silence. |
 | Adds a "Radio Passthrough" capture profile to TeamSpeak's `settings.db` | So TeamSpeak uses the cable. It backs up the file first (last 5 kept) and only writes while TeamSpeak is closed. |
 | Puts your own speakers and mic back as Windows defaults if they get switched to the cable, and hides VB-CABLE's unused extra device | So Windows, Discord and games never pick the cable. You can switch this off. |
 | Installs to `%LOCALAPPDATA%\Programs\Radio Passthrough`, adds a Start menu entry and an Apps entry, and starts with Windows | Standard per-user install. No admin rights, no services, no drivers of its own. |

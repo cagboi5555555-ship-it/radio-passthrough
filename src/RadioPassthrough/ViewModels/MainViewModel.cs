@@ -9,6 +9,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly AppController _app;
     private readonly DispatcherTimer _frame;
     private readonly DispatcherTimer _slow;
+    private readonly DispatcherTimer _hidden;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private double _lastFrame;
     private int _selectedTab;
@@ -28,6 +29,10 @@ public sealed class MainViewModel : ObservableObject
         _frame.Tick += (_, _) => Frame();
         _slow = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _slow.Tick += async (_, _) => await Setup.RefreshAsync();
+        // While in the tray the checklist still runs now and then, so a problem (TeamSpeak switched back to
+        // another mic, for example) reaches the tray icon instead of waiting until the window is opened.
+        _hidden = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _hidden.Tick += async (_, _) => await Setup.RefreshAsync();
     }
 
     public LiveViewModel Live { get; }
@@ -57,14 +62,19 @@ public sealed class MainViewModel : ObservableObject
 
     public CheckLevel StatusLevel { get => _statusLevel; private set => Set(ref _statusLevel, value); }
 
-    // Timers only run while the window is visible (see SetVisible).
-    public void Start() => _ = Setup.RefreshAsync();
+    // The app starts hidden in the tray; showing the window swaps to the faster timers (see SetVisible).
+    public void Start()
+    {
+        _hidden.Start();
+        _ = Setup.RefreshAsync();
+    }
 
     // Stops UI-only work while the window is hidden in the tray.
     public void SetVisible(bool visible)
     {
         if (visible)
         {
+            _hidden.Stop();
             _frame.Start();
             _slow.Start();
             _ = Setup.RefreshAsync();
@@ -73,6 +83,7 @@ public sealed class MainViewModel : ObservableObject
         {
             _frame.Stop();
             _slow.Stop();
+            _hidden.Start();
         }
     }
 

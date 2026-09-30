@@ -101,4 +101,28 @@ public class DriftBufferTests
         for (int i = 1; i < steady.Length; i++) maxStep = MathF.Max(maxStep, MathF.Abs(steady[i] - steady[i - 1]));
         Assert.True(maxStep < 0.07f, $"step {maxStep}");
     }
+
+    [Fact]
+    public void A_short_gap_is_a_dropout_but_a_silent_pause_is_not()
+    {
+        long now = 0;
+        var buffer = new DriftBuffer(960, clockMs: () => now);
+        var packet = new float[480];
+        var read = new float[480];
+
+        for (int i = 0; i < 4; i++) buffer.Write(packet);
+        while (buffer.Read(read) == read.Length) { } // runs dry
+        Assert.Equal(1, buffer.Underruns);
+
+        now += 40; // audio comes back almost at once: a real gap
+        buffer.Write(packet);
+        Assert.Equal(1, buffer.Dropouts);
+
+        for (int i = 0; i < 4; i++) buffer.Write(packet);
+        while (buffer.Read(read) == read.Length) { }
+        now += 5000; // the app was silent for a while (per-app capture delivers nothing then)
+        buffer.Write(packet);
+        Assert.Equal(2, buffer.Underruns);
+        Assert.Equal(1, buffer.Dropouts);
+    }
 }

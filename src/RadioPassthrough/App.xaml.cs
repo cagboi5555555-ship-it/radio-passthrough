@@ -114,6 +114,7 @@ public partial class App : Application
         _viewModel.PropertyChanged += (_, p) =>
         {
             if (p.PropertyName == nameof(MainViewModel.StatusText)) _tray?.SetTooltip($"Radio Passthrough · {_viewModel.StatusText}");
+            if (p.PropertyName is nameof(MainViewModel.StatusText) or nameof(MainViewModel.StatusLevel)) WatchForProblem();
         };
         _controller.DeviceGuard.Restored += message => Dispatcher.BeginInvoke(() => _tray?.ShowMessage("Sound devices put back", message));
         _window.HiddenToTray += () =>
@@ -137,6 +138,39 @@ public partial class App : Application
         }
 
         if (!args.Contains("--tray")) ShowWindow();
+    }
+
+    // A problem that stops the radio passthrough working gets a tray notification when the window is hidden, so it
+    // isn't discovered mid-mission. It has to last a few seconds first (the engine retries on its own), and
+    // each problem is announced once.
+    private DispatcherTimer? _problemTimer;
+    private string? _announcedProblem;
+
+    private void WatchForProblem()
+    {
+        if (_viewModel is null) return;
+        if (_viewModel.StatusLevel != CheckLevel.Blocking)
+        {
+            _announcedProblem = null;
+            _problemTimer?.Stop();
+            return;
+        }
+        if (_viewModel.StatusText == _announcedProblem) return;
+        _problemTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) };
+        _problemTimer.Tick -= AnnounceProblem;
+        _problemTimer.Tick += AnnounceProblem;
+        _problemTimer.Stop();
+        _problemTimer.Start();
+    }
+
+    private void AnnounceProblem(object? sender, EventArgs e)
+    {
+        _problemTimer?.Stop();
+        if (_viewModel is null || _window is null || _quitting) return;
+        if (_viewModel.StatusLevel != CheckLevel.Blocking || _window.IsVisible) return;
+        _announcedProblem = _viewModel.StatusText;
+        Log.Info($"Told the user: {_announcedProblem}");
+        _tray?.ShowMessage("Radio Passthrough needs attention", $"{_announcedProblem.TrimEnd('.')}. Click here to see what's wrong.");
     }
 
     private ContextMenu BuildTrayMenu()

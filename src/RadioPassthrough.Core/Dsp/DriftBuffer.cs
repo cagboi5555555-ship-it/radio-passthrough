@@ -11,6 +11,7 @@ public sealed class DriftBuffer
     private const double MaxRatioOffset = 0.004;
     private const double ControlGain = 0.004;
     private const double ErrorSmoothing = 0.02;
+    private const long DropoutGapMs = 250;
 
     private readonly int _channels;
     private readonly float[] _ring;
@@ -21,9 +22,13 @@ public sealed class DriftBuffer
     private double _frac;
     private double _smoothedError;
     private bool _primed;
+    private readonly Func<long> _clockMs;
+    private long _ranDryAt;
+    private bool _dry;
 
-    public DriftBuffer(int targetFrames, int channels = 1)
+    public DriftBuffer(int targetFrames, int channels = 1, Func<long>? clockMs = null)
     {
+        _clockMs = clockMs ?? (() => Environment.TickCount64);
         if (targetFrames <= 0 || targetFrames > Capacity / 8)
             throw new ArgumentOutOfRangeException(nameof(targetFrames));
         if (channels < 1) throw new ArgumentOutOfRangeException(nameof(channels));
@@ -36,7 +41,12 @@ public sealed class DriftBuffer
 
     public double Ratio { get; private set; } = 1.0;
 
+    // Every time a read ran out of data.
     public int Underruns { get; private set; }
+
+    // Underruns where audio came back within a moment: a real gap in the middle of sound. Per-app capture
+    // stops delivering while the app is silent, so running dry followed by a long pause is not counted.
+    public int Dropouts { get; private set; }
 
     // In frames.
     public double Fill
@@ -49,6 +59,11 @@ public sealed class DriftBuffer
         int frames = interleaved.Length / _channels;
         lock (_lock)
         {
+            if (_dry && frames > 0)
+            {
+                if (_clockMs() - _ranDryAt <= DropoutGapMs) Dropouts++;
+                _dry = false;
+            }
             for (int f = 0; f < frames; f++)
             {
                 int slot = (int)(_written & Mask) * _channels;
@@ -96,6 +111,8 @@ public sealed class DriftBuffer
                     destination[(i * _channels)..].Clear();
                     _primed = false;
                     Underruns++;
+                    _dry = true;
+                    _ranDryAt = _clockMs();
                     return i * _channels;
                 }
 
@@ -120,6 +137,7 @@ public sealed class DriftBuffer
             _written = _readIndex = 0;
             _frac = _smoothedError = 0;
             _primed = false;
+            _dry = false;
             Ratio = 1.0;
             Array.Clear(_ring);
         }

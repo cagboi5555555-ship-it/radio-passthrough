@@ -82,7 +82,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Sound: the guide's mix (Doc 1:1) -->
+        <!-- Sound: the guide's Voicemeeter mix -->
         <TextBlock Text="Sound" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">
             <StackPanel>
@@ -93,7 +93,7 @@
                 <Border Style="{StaticResource Divider}" />
                 <Grid Style="{StaticResource Row}">
                     <TextBlock Text="Mix" Style="{StaticResource RowLabel}" />
-                    <TextBlock Text="Doc 1:1" Style="{StaticResource RowLabel}" Foreground="{DynamicResource Ink2}" HorizontalAlignment="Right" />
+                    <TextBlock Text="Same as the Voicemeeter guide" Style="{StaticResource RowLabel}" Foreground="{DynamicResource Ink2}" HorizontalAlignment="Right" />
                 </Grid>
             </StackPanel>
         </Border>
@@ -156,6 +156,6 @@
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="These only count while Arma is the active window. Ctrl + Alt + Caps Lock opens the radio screen, so it's left out." />
+                   Text="These only count while Arma is the active window; switching away ends the transmission. Ctrl + Alt + Caps Lock opens the radio screen, so it's left out." />
     </StackPanel>
 </UserControl>

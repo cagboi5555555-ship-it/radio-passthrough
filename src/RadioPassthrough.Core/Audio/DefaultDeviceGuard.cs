@@ -68,9 +68,21 @@ public sealed class DefaultDeviceGuard : IDisposable
         _notifications = _enumerator.CreateNotificationClient(false);
         _debounce = new Timer(_ => SafeCheck(), null, Timeout.Infinite, Timeout.Infinite);
         // Windows fires one notification per role; wait for the burst to finish.
-        _notifications.DefaultDeviceChanged += (_, _) => _debounce.Change(400, Timeout.Infinite);
-        _notifications.DeviceStateChanged += (_, _) => _debounce.Change(1000, Timeout.Infinite);
+        _notifications.DefaultDeviceChanged += (_, _) => Debounce(400);
+        _notifications.DeviceStateChanged += (_, _) => Debounce(1000);
         SafeCheck();
+    }
+
+    // Windows can still deliver a notification while the app shuts down.
+    private void Debounce(int milliseconds)
+    {
+        try
+        {
+            _debounce?.Change(milliseconds, Timeout.Infinite);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private void SafeCheck()
@@ -157,8 +169,8 @@ public sealed class DefaultDeviceGuard : IDisposable
 
     public void Dispose()
     {
-        _debounce?.Dispose();
         _notifications?.Dispose();
+        _debounce?.Dispose();
         _enumerator?.Dispose();
     }
 }

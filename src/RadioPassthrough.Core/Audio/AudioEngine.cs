@@ -74,8 +74,8 @@ public sealed class AudioEngine : IAsyncDisposable
 
     public bool RadioKeyHeld => _radioKey;
 
-    // How often the mic or game buffer ran dry (each one is an audible gap). For diagnostics.
-    public (int Mic, int Game) Dropouts => (_micBuffer.Underruns, _gameBuffer.Underruns);
+    // Audible gaps in the mic or game audio since start. Pauses while Arma is silent don't count. For diagnostics.
+    public (int Mic, int Game) Dropouts => (_micBuffer.Dropouts, _gameBuffer.Dropouts);
 
     public EngineStatus Status => Volatile.Read(ref _status);
 
@@ -114,7 +114,15 @@ public sealed class AudioEngine : IAsyncDisposable
 
     private void ScheduleReconcile(TimeSpan delay)
     {
-        if (!_disposed) _retryTimer.Change(delay, Timeout.InfiniteTimeSpan);
+        if (_disposed) return;
+        try
+        {
+            _retryTimer.Change(delay, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+            // A device notification arrived while shutting down.
+        }
     }
 
     private async Task ReconcileAsync(bool forceRestart = false)

@@ -16,7 +16,7 @@ public sealed partial class TrayIcon : IDisposable
     private const int NifMessage = 0x1, NifIcon = 0x2, NifTip = 0x4, NifInfo = 0x10, NifShowTip = 0x80;
     private const int NiifNoSound = 0x10, NiifUser = 0x4;
     private const int NotifyIconVersion4 = 4;
-    private const int WmLButtonUp = 0x0202, WmRButtonUp = 0x0205, WmContextMenu = 0x007B, NinSelect = 0x0400, NinKeySelect = 0x0401;
+    private const int WmLButtonUp = 0x0202, WmRButtonUp = 0x0205, WmContextMenu = 0x007B, NinSelect = 0x0400, NinKeySelect = 0x0401, NinBalloonUserClick = 0x0405;
 
     private readonly HwndSource _window;
     private readonly ContextMenu _menu;
@@ -79,7 +79,7 @@ public sealed partial class TrayIcon : IDisposable
             int ev = (int)(lParam.ToInt64() & 0xFFFF);
             switch (ev)
             {
-                case WmLButtonUp or NinSelect or NinKeySelect:
+                case WmLButtonUp or NinSelect or NinKeySelect or NinBalloonUserClick:
                     _open();
                     handled = true;
                     break;
