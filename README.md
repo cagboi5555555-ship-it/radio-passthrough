@@ -54,7 +54,7 @@ Nothing on the Test tab changes your settings.
 
 | What happens | Try this |
 |---|---|
-| Nobody hears me at all | Is Radio Passthrough running (tray icon)? Open it and check the top line. |
+| Nobody hears me at all | Is Radio Passthrough running (tray icon)? Open it and check the top line. If Setup says *Microphone access*, click **Open settings** and turn Windows' microphone access back on. |
 | Teammates hear me but no game sound | Hold the radio key **in Arma** (it only counts while Arma is the active window). The Live tab should say *On the radio*. |
 | Setup says Arma runs as administrator | Click **Restart as admin**, or stop running Arma as admin. |
 | My speakers or mic switched to "CABLE" | The app switches them back by itself (Setup → *Keep my speakers and mic as the defaults*). |

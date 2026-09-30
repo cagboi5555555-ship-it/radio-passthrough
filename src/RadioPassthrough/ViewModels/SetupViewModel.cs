@@ -217,6 +217,10 @@ public sealed class SetupViewModel : ObservableObject
                     Process.Start(new ProcessStartInfo("control.exe", "mmsys.cpl,,1") { UseShellExecute = true })?.Dispose();
                     Say("In Recording, open CABLE Output → Advanced and choose 48000 Hz. Do the same for CABLE Input under Playback.", CheckLevel.Info);
                     break;
+                case CheckAction.OpenMicPrivacy:
+                    Open(MicrophonePrivacy.SettingsPage);
+                    Say("Turn on Microphone access and Let desktop apps access your microphone. This checklist updates by itself.", CheckLevel.Info);
+                    break;
                 case CheckAction.RestartAsAdmin:
                     App.RestartElevated();
                     return;
