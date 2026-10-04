@@ -261,7 +261,7 @@ public sealed class SetupViewModel : ObservableObject
                 if (apply)
                 {
                     var cable = AudioDevices.CableOutput() ?? throw new InvalidOperationException("Install VB-CABLE first.");
-                    _app.Settings.PreviousTeamSpeakProfile = _app.TeamSpeak.Apply(cable.Id, cable.Name);
+                    _app.Settings.PreviousTeamSpeakProfile = _app.TeamSpeak.Apply(cable.Id, cable.Name, _app.Settings.PreviousTeamSpeakProfile);
                     _app.SaveNow();
                 }
                 else

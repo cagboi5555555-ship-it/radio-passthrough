@@ -43,6 +43,8 @@ public static class DiagnosticsReport
         {
             sb.AppendLine($"  installed: {teamSpeak.Installed}, running: {teamSpeak.Running}, ACRE2 plugin: {teamSpeak.AcrePluginInstalled}");
             sb.AppendLine($"  default capture profile: {teamSpeak.DefaultCaptureProfile} → {teamSpeak.ActiveCapture?.DeviceName ?? "?"}");
+            if (teamSpeak.ActiveCapture is { MissesDirectSpeech: true })
+                sb.AppendLine("  voice activation can't open: Automatic/Hybrid with Remove background noise off");
         }
         sb.AppendLine();
 

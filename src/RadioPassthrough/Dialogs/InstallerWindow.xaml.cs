@@ -51,8 +51,6 @@ public partial class InstallerWindow : Window
                 _installation.Install(source, AppInfo.Version, desktop, autostart);
             });
             Process.Start(new ProcessStartInfo(_installation.ExePath, "--installed") { UseShellExecute = true, WorkingDirectory = _installation.InstallDirectory })?.Dispose();
-            if (DeleteSetup.IsChecked == true && !Installation.DiscardSetupFile(source))
-                Log.Info("The setup file couldn't be removed (it's on another drive or read-only); it stays where it is.");
             Close();
         }
         catch (Exception ex)

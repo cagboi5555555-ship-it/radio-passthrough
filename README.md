@@ -65,7 +65,7 @@ Nothing on the Test tab changes your settings.
 
 ## Update
 
-The app never checks for updates by itself, because it never goes online. To update, download the newest **RadioPassthrough-Setup-x.y.z.exe** from the Releases page, run it and click **Update**. Your settings, radio keys and TeamSpeak setup are kept, and the app restarts by itself. The downloaded setup file is deleted afterwards unless you switch that off.
+The app never checks for updates by itself, because it never goes online. To update, download the newest **RadioPassthrough-Setup-x.y.z.exe** from the Releases page, run it and click **Update**. Your settings, radio keys and TeamSpeak setup are kept, and the app restarts by itself.
 
 ## Uninstall
 

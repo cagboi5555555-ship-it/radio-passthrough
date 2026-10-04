@@ -53,7 +53,14 @@ public static class SystemChecks
         {
             var active = ts.ActiveCapture;
             bool usesCable = active is not null && cableOut is not null && active.DeviceId == cableOut.Id;
-            if (usesCable)
+            if (usesCable && active!.MissesDirectSpeech)
+            {
+                string restart = ts.Running ? " TeamSpeak restarts for a moment." : "";
+                checks.Add(new Check("TeamSpeak microphone", "TeamSpeak only sends your voice on the radio, not in direct speech. " +
+                    "Its voice activation needs Remove background noise, which is off. Fix turns it back on, like on your normal mic." + restart,
+                    CheckLevel.Blocking, CheckAction.SetUpTeamSpeak, "Fix"));
+            }
+            else if (usesCable)
             {
                 checks.Add(new Check("TeamSpeak microphone", $"Uses \"{active!.Name}\" on every server, with your usual processing.",
                     CheckLevel.Ok, CheckAction.RestoreTeamSpeak, "Undo"));

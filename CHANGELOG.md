@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.2
+
+- **Fixed: direct speech wasn't sent, only the radio.** The real cause was in TeamSpeak. Its Automatic and Hybrid voice activation only work while *Remove background noise* is on. With it off on the Radio Passthrough profile, TeamSpeak never opened for normal talking. ACRE still forced the radio through, which is why only the radio worked. Setup now always gives the profile working voice activation, the same as your normal mic. If it gets switched off later, the checklist shows it and **Fix** puts it back.
+- The installer no longer deletes or moves the setup file you downloaded. It stays where you put it.
+
 ## 1.6.1
 
 - **Fixed: direct speech wasn't heard, only the radio.** Since 1.5.0 a mic plugged into one input of a two-input interface went to TeamSpeak on one side only. TeamSpeak averages both sides, so it got your voice at half level and its voice activation stopped opening for normal speech; the radio still worked because ACRE forces the transmission. Your mic now goes on both sides at full level. Stereo mics and the game's stereo are unchanged.

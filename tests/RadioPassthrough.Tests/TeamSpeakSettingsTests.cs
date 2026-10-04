@@ -81,6 +81,43 @@ public sealed class TeamSpeakSettingsTests : IDisposable
         Assert.Null(Value("Capture/Radio Passthrough/PreProcessing"));
     }
 
+    [Theory]
+    [InlineData("vad=true\nvad_mode=0\ndenoise=false\ncontinous_transmission=false", true)]  // Automatic, noise removal off
+    [InlineData("vad=true\nvad_mode=2\ndenoise=false", true)]                                // Hybrid, noise removal off
+    [InlineData("vad=true\ndenoise=false", true)]                                             // no mode stored = Automatic
+    [InlineData("vad=true\nvad_mode=0\ndenoise=true", false)]                                // TeamSpeak's default
+    [InlineData("vad=true\nvad_mode=1\ndenoise=false", false)]                               // Volume Gate
+    [InlineData("vad=false\nvad_mode=0\ndenoise=false", false)]                              // push-to-talk
+    [InlineData("vad=true\nvad_mode=0\ndenoise=false\ncontinous_transmission=true", false)]  // always sending
+    [InlineData(null, false)]
+    public void Spots_voice_activation_that_never_opens(string? preprocessing, bool misses) =>
+        Assert.Equal(misses, TeamSpeakSettings.MissesDirectSpeech(preprocessing));
+
+    [Fact]
+    public void Direct_speech_is_fixed_from_the_normal_profile()
+    {
+        var ts = new TeamSpeakSettings(_dir, () => false);
+        ts.Apply(CableId, "CABLE Output");
+        // Someone switches Remove background noise off on the passthrough profile in TeamSpeak.
+        using (var db = SqliteDatabase.Open(Path.Combine(_dir, "settings.db")))
+            db.Execute("UPDATE Profiles SET value = ? WHERE key = ?", "vad=true\nvad_mode=0\ndenoise=false\ndenoiser_level=0", "Capture/Radio Passthrough/PreProcessing");
+        Assert.True(ts.Read().ActiveCapture?.MissesDirectSpeech);
+
+        Assert.Equal("Default", ts.Apply(CableId, "CABLE Output", "Default"));
+        Assert.Equal(PreProcessing, Value("Capture/Radio Passthrough/PreProcessing"));
+        Assert.False(ts.Read().ActiveCapture?.MissesDirectSpeech);
+    }
+
+    [Fact]
+    public void A_normal_profile_that_never_opens_gets_noise_removal_back()
+    {
+        using (var db = SqliteDatabase.Open(Path.Combine(_dir, "settings.db")))
+            db.Execute("UPDATE Profiles SET value = ? WHERE key = ?", "vad=true\nvad_mode=0\ndenoise=false\ndenoiser_level=0\nagc=true", "Capture/Default/PreProcessing");
+        var ts = new TeamSpeakSettings(_dir, () => false);
+        ts.Apply(CableId, "CABLE Output");
+        Assert.Equal("vad=true\nvad_mode=0\ndenoise=true\ndenoiser_level=1\nagc=true", Value("Capture/Radio Passthrough/PreProcessing"));
+    }
+
     [Fact]
     public void Refuses_while_teamspeak_is_running()
     {

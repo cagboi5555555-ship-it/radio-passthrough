@@ -61,12 +61,6 @@
                     <CheckBox x:Name="DesktopShortcut" Style="{StaticResource Switch}" HorizontalAlignment="Right" IsChecked="True" />
                 </Grid>
 
-                <Grid Margin="16,12,4,0">
-                    <TextBlock Text="Delete this setup file afterwards" Style="{StaticResource RowLabel}" Margin="0,0,56,0" />
-                    <CheckBox x:Name="DeleteSetup" Style="{StaticResource Switch}" HorizontalAlignment="Right" IsChecked="True"
-                              AutomationProperties.Name="Delete this setup file afterwards" />
-                </Grid>
-
                 <TextBlock x:Name="StatusText" Style="{StaticResource Secondary}" Margin="0,16,0,0" Visibility="Collapsed" />
 
                 <Grid Margin="0,22,0,0">

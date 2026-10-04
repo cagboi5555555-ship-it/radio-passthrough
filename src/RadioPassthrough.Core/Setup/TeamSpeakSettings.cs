@@ -3,7 +3,8 @@ using RadioPassthrough.Core.Native;
 
 namespace RadioPassthrough.Core.Setup;
 
-public sealed record TeamSpeakProfile(string Name, string? DeviceId, string? DeviceName);
+// MissesDirectSpeech: the profile's voice activation never opens, so TeamSpeak only sends you on the radio.
+public sealed record TeamSpeakProfile(string Name, string? DeviceId, string? DeviceName, bool MissesDirectSpeech = false);
 
 public sealed record TeamSpeakState
 {
@@ -68,7 +69,7 @@ public sealed class TeamSpeakSettings
                 .Where(k => k.StartsWith("Capture/", StringComparison.Ordinal) && !k.EndsWith("/PreProcessing", StringComparison.Ordinal))
                 .Select(k => k["Capture/".Length..])
                 .Where(n => n.Length > 0)
-                .Select(n => ParseProfile(n, values[$"Capture/{n}"]))
+                .Select(n => ParseProfile(n, values[$"Capture/{n}"], values.GetValueOrDefault($"Capture/{n}/PreProcessing")))
                 .ToList();
 
             return new TeamSpeakState
@@ -86,10 +87,10 @@ public sealed class TeamSpeakSettings
         }
     }
 
-    // Adds (or refreshes) the Radio Passthrough capture profile with the cable as its device and a verbatim
-    // copy of the current profile's processing, then makes it the default for all servers. Returns the
-    // profile that was the default before, for restoring later.
-    public string Apply(string cableDeviceId, string cableDeviceName)
+    // Adds (or refreshes) the Radio Passthrough capture profile with the cable as its device and a copy of
+    // your normal profile's processing, then makes it the default for all servers. Returns the profile that
+    // was the default before, for restoring later. normalProfile names it when the passthrough is already on.
+    public string Apply(string cableDeviceId, string cableDeviceName, string? normalProfile = null)
     {
         EnsureClosed();
         Backup();
@@ -100,13 +101,16 @@ public sealed class TeamSpeakSettings
         {
             var values = ReadProfiles(connection);
             string current = values.GetValueOrDefault("DefaultCaptureProfile") ?? "Default";
-            previous = current == ProfileName ? "Default" : current;
+            previous = current != ProfileName ? current
+                : normalProfile is { } n && n != ProfileName && values.ContainsKey($"Capture/{n}") ? n : "Default";
             string source = values.ContainsKey($"Capture/{previous}") ? previous : "Default";
 
             string mode = "";
             if (values.GetValueOrDefault($"Capture/{source}") is { } sourceProfile)
                 mode = ParseLines(sourceProfile).GetValueOrDefault("Mode") ?? "";
             string preprocessing = values.GetValueOrDefault($"Capture/{source}/PreProcessing") ?? DefaultPreProcessing;
+            if (MissesDirectSpeech(preprocessing))
+                preprocessing = WithValue(WithValue(preprocessing, "denoise", "true"), "denoiser_level", "1");
 
             Upsert(connection, $"Capture/{ProfileName}", $"DeviceDisplayName={cableDeviceName}\nDevice={cableDeviceId}\nMode={mode}");
             Upsert(connection, $"Capture/{ProfileName}/PreProcessing", preprocessing);
@@ -182,10 +186,31 @@ public sealed class TeamSpeakSettings
         "ON CONFLICT(key) DO UPDATE SET timestamp = excluded.timestamp, value = excluded.value",
         DateTimeOffset.UtcNow.ToUnixTimeSeconds(), key, value);
 
-    private static TeamSpeakProfile ParseProfile(string name, string? value)
+    private static TeamSpeakProfile ParseProfile(string name, string? value, string? preprocessing)
     {
         var lines = ParseLines(value);
-        return new TeamSpeakProfile(name, lines.GetValueOrDefault("Device"), lines.GetValueOrDefault("DeviceDisplayName"));
+        return new TeamSpeakProfile(name, lines.GetValueOrDefault("Device"), lines.GetValueOrDefault("DeviceDisplayName"), MissesDirectSpeech(preprocessing));
+    }
+
+    // TeamSpeak's Automatic and Hybrid voice activation (vad_mode 0 and 2; 1 is Volume Gate, as its options
+    // dialog stores them) work from its "Remove background noise". With that off they never open: direct
+    // speech isn't sent at all, and only the radio gets through, because ACRE switches transmission on itself.
+    public static bool MissesDirectSpeech(string? preprocessing)
+    {
+        var p = ParseLines(preprocessing);
+        return p.GetValueOrDefault("vad") == "true"
+               && p.GetValueOrDefault("continous_transmission") != "true"
+               && p.GetValueOrDefault("denoise") != "true"
+               && p.GetValueOrDefault("vad_mode", "0") != "1";
+    }
+
+    private static string WithValue(string preprocessing, string key, string value)
+    {
+        var lines = preprocessing.Split('\n').ToList();
+        int i = lines.FindIndex(l => l.StartsWith(key + "=", StringComparison.Ordinal));
+        if (i >= 0) lines[i] = $"{key}={value}";
+        else lines.Add($"{key}={value}");
+        return string.Join('\n', lines);
     }
 
     private static Dictionary<string, string> ParseLines(string? value)
