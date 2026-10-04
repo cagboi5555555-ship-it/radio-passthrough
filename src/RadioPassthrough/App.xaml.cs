@@ -35,11 +35,13 @@ public partial class App : Application
     private TrayIcon? _tray;
     private MenuItem? _gameAudioItem;
     private bool _quitting;
+    private volatile bool _sessionEnding;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnDispatcherUnhandled;
+        SessionEnding += OnSessionEnding;
         AppDomain.CurrentDomain.UnhandledException += OnFatal;
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
@@ -358,8 +360,22 @@ public partial class App : Application
         Shutdown();
     }
 
+    // Windows is signing out or shutting down: save now, and never start a fresh copy on the way down.
+    private void OnSessionEnding(object? sender, SessionEndingCancelEventArgs e)
+    {
+        _sessionEnding = true;
+        _controller?.SaveNow();
+        Log.Info("Windows is signing out or shutting down.");
+    }
+
     private void OnDispatcherUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        if (_sessionEnding)
+        {
+            // WPF's own shutdown code can throw while Windows ends the session; nothing to report.
+            e.Handled = true;
+            return;
+        }
         Log.Error("Unexpected error in the window", e.Exception);
         e.Handled = true;
     }
@@ -369,7 +385,7 @@ public partial class App : Application
     private void OnFatal(object sender, UnhandledExceptionEventArgs e)
     {
         Log.Error("Fatal error", e.ExceptionObject as Exception);
-        if (_controller is null || _quitting || Environment.ProcessPath is not { } exe) return;
+        if (_controller is null || _quitting || _sessionEnding || Environment.ProcessPath is not { } exe) return;
         try
         {
             string file = Path.Combine(Log.Directory, "crashes.txt");

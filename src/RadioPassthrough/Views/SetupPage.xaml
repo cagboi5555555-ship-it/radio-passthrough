@@ -95,7 +95,7 @@
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Footnote}" Margin="16,8,16,0"
-                   Text="Your normal microphone, like Voicemeeter's Stereo Input 1. A mic on one input is sent on both sides at full level, so TeamSpeak's voice activation hears you." />
+                   Text="Your normal microphone, like Voicemeeter's Stereo Input 1. Its inputs are passed on in stereo, as Voicemeeter did." />
 
         <TextBlock Text="Windows" Style="{StaticResource SectionHeader}" />
         <Border Style="{StaticResource Card}">

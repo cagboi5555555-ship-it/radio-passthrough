@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.3
+
+- **Your mic goes to TeamSpeak exactly as the guide's Voicemeeter setup sent it**, and exactly as TeamSpeak gets it from your mic directly. 1.6.1 copied a mic on one input onto both sides, based on a wrong guess about the direct-speech problem; the real cause was fixed in 1.6.2. Voice and game are back in the guide's balance.
+- Signing out or shutting down Windows no longer logs an error, and the app never restarts itself while Windows is closing.
+- Verified on a real PC through VB-CABLE: with a radio key held the game arrives at exactly its own level on both sides, with no dropouts. Released, only your mic goes out, untouched.
+
 ## 1.6.2
 
 - **Fixed: direct speech wasn't sent, only the radio.** The real cause was in TeamSpeak. Its Automatic and Hybrid voice activation only work while *Remove background noise* is on. With it off on the Radio Passthrough profile, TeamSpeak never opened for normal talking. ACRE still forced the radio through, which is why only the radio worked. Setup now always gives the profile working voice activation, the same as your normal mic. If it gets switched off later, the checklist shows it and **Fix** puts it back.
